@@ -87,4 +87,33 @@ app.get("/api/events/:eventId", (req, res) => {
   res.json(resMap);
 });
 
+app.post("/api/events/:eventId", (req, res) => { 
+  if (!req.params.eventId) {
+    perror(req, res, "eventId missing");
+    return;
+  }
+  if (!req.params.eventId.match(/^[0-9]+$/)) {
+    perror(req, res, "eventId not positive integer", 404);
+    return;
+  }
+  const eventId = Number(req.params.eventId);
+  const r = db.exec(`
+      SELECT placeId, eventTime from Events where eventId=${eventId} limit 1
+  `);
+  if (r && !r[0]) {
+    perror(req, res, "eventId doesn't exist", 404);
+    return;
+  }
+  if (!r || !r[0].values || !r[0].values[0] || r[0].values[0].length != 2) {
+    perror(req, res, "select eventId from Events table failed");
+    return;
+  }
+  const resMap = {placeId: r[0].values[0][0], eventTime: r[0].values[0][1]};
+  console.log("%s %s -> %s", req.method, req.originalUrl, JSON.stringify(resMap));
+  res.json(resMap);
+});
+
+
 app.listen(app.get("port"));
+console.log("localhost:%s", app.get("port"))
+
