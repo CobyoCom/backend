@@ -1,30 +1,29 @@
 # backend
 
 1. Event Creation
-: POST: /api/events
-: Body: destination=[]&time=[]
-: Return {eventID}
+: POST:   /api/events
+: Body:   placeId=&time=
+: Return: eventId
 
-2. Show Event description
-: GET /api/events/:id
-: Return {destination, time}
+2. Event Preview
+: GET:    /api/events/:eventId
+: Return: placeId, time
 
-3. Join Event + Login Event + Get most updated event
-: POST: /api/events/:id
-: Body: username=[]&ETA=[]&LUT=[]
-: Return {":username" : {ETA, LUT}, ..., }}
+3. Join Event / Login Event / Get Most Updated Event
+: POST:   /api/events/:eventId
+: Body:   userName=&estimatedArrivalTime=&lastUpdatedTime=
+: Return: Listof {userName, estimatedArrivalTime, lastUpdatedTime}
 
 4. Example
+: [URL=cobyo.com/events/:eventId]
+: GET "/api/events/:eventId"
+:   Return  event.placeId, event.time
+: RENDER + FORM [Enter your username?]
+: POST "/api/events/:eventId"
+:   Body    userName=&estimatedArrivalTime=&lastUpdatedTime=
+:   Return  event.userList {userName, estimatedArrivalTime, lastUpdatedTime}
 
-URL=cobyo.com/events/:id
-  GET "/api/events/:id"
-  Return Event[Name, Destination, Time]
-RENDER + FORM [Enter your username:?]
-  POST "/api/events/:id"
-  Body username=[]&ETA=[]&LUT=[]
-  Returns Userlist
-
-[Tables]
-<Events> "id" | destination | time 
-<UsersOfEvents> (eventid,username) | ETA | LUT
+5. DB Tables
+: <Events> eventId | placeId | time
+: <EventUsers> (eventId, userName) | estimatedArrivalTime | lastUpdatedTime
 
