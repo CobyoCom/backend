@@ -7,7 +7,7 @@ const app = express();
 const COLUMNS = ["id","name","time"];
 
 app.set("port", process.env.PORT || 3001);
-if (process.env.NODE_ENV === "production") {app.use(express.static("client/build"))}
+//if (process.env.NODE_ENV === "production") {app.use(express.static("client/build"))}
 
 app.get("/api", (req, res) => {
   const param = req.query.id;
