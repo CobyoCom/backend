@@ -1,29 +1,77 @@
 # backend
 
 1. Event Creation
-: POST:   /api/events
-: Body:   placeId=&time=
-: Return: eventId
+
+[REQUEST]
+POST /api/events
+{
+  placeId: $placeId,
+  eventTime: $eventTime
+}
+
+[Response]
+{
+  eventId: $eventId
+}
 
 2. Event Preview
-: GET:    /api/events/:eventId
-: Return: placeId, time
+
+[REQUEST]
+GET /api/events/:eventId
+
+[RESPONSE]
+{
+  placeId: $placeId,
+  eventTime: $eventTime
+}
 
 3. Join Event / Login Event / Get Most Updated Event
-: POST:   /api/events/:eventId
-: Body:   userName=&estimatedArrivalTime=&lastUpdatedTime=
-: Return: Listof {userName, estimatedArrivalTime, lastUpdatedTime}
 
-4. Example
-: [URL=cobyo.com/events/:eventId]
-: GET "/api/events/:eventId"
-:   Return  event.placeId, event.time
-: RENDER + FORM [Enter your username?]
-: POST "/api/events/:eventId"
-:   Body    userName=&estimatedArrivalTime=&lastUpdatedTime=
-:   Return  event.userList {userName, estimatedArrivalTime, lastUpdatedTime}
+[REQUEST]
+POST /api/events/:eventId
+{
+  userName: $userName,
+  estimatedArrivalTime: $estimatedArrivalTime, 
+  lastUpdatedTime: $lastUpdatedTime
+}
 
-5. DB Tables
-: <Events> eventId | placeId | time
-: <EventUsers> (eventId, userName) | estimatedArrivalTime | lastUpdatedTime
+[RESPONSE]
+{
+  placeId: $placeId, 
+  eventTime: $eventTime, 
+  users: 
+  {
+    $userName: 
+    {
+      estimatedArrivalTime: $estimatedArrivalTime, 
+      lastUpdatedTIme: $lastUpdatedTime
+    }
+    ...
+  }
+}
+
+4. Example 1: Create Event
+
+- URL="cobyo.com/" (or "/events")
+- RENDER + FORM "Event place & time?"
+- POST "/api/events" / (placeId, eventTime) => eventId
+- REDIRECT URL="cobyo.com/events/:eventId"
+- RENDER + FORM "Enter your username?"
+- POST "/api/events/:eventId" / (userName, estimatedArrivalTime, lastUpdatedTime)
+  => placeId, eventTime, users: {userName: estimatedArrivalTime, lastUpdatedTime}
+- RENDER Event page
+
+
+5. Example 2: Follow straight to event URL
+- URL="cobyo.com/events/:eventId"
+- GET "/api/events/:eventId" => placeId, eventTime
+- RENDER + FORM "Enter your username?"
+- POST "/api/events/:eventId" / (userName, estimatedArrivalTime, lastUpdatedTime)
+  => placeId, eventTime, users: {userName: estimatedArrivalTime, lastUpdatedTime}
+- RENDER Event page
+
+
+6. DB Tables
+- <Events> eventId | placeId | eventTime
+- <EventUsers> (eventId, userName) | estimatedArrivalTime | lastUpdatedTime
 
