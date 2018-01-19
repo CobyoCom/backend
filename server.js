@@ -20,7 +20,7 @@ function logResult(req, res, resMap) {
 
 
 db.run(`
-  PRAGMA foreign_keys = ON;
+  PRAGMA FOREIGN_KEYS = ON;
   CREATE TABLE Events (
     eventId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     placeId TEXT NOT NULL,
@@ -122,7 +122,6 @@ app.post("/api/events/:eventId", (req, res) => {
     perror(req, res, "select eventId from EventUsers table failed");
     return;
   }
-  console.log(resMap);
   r[0].values.forEach((user) => resMap.users[user[0]] = 
     {estimatedArrivalTime: user[1], lastUpdatedTime: user[2]});
   logResult(req, res, resMap);
