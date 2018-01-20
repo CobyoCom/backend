@@ -34,7 +34,7 @@ db.run(`
     PRIMARY KEY (eventId, userName),
     FOREIGN KEY (eventId) REFERENCES Events (eventId) ON DELETE CASCADE
   ) WITHOUT ROWID;
-  INSERT INTO Events (placeId, eventTime) VALUES ('ABC', '2018-01-13 18:20');
+  INSERT INTO Events (placeId, eventTime) VALUES ('ChIJ_TSYQfV544kRLjVKmCw9xD0', '2018-01-13 18:20');
   INSERT INTO EventUsers (eventId, userName, estimatedArrivalTime, lastUpdatedTime)
     VALUES (1, 'Josh', '2018-01-13 18:25', '2018-01-13 17:30');
 `);
