@@ -108,22 +108,24 @@ app.post("/api/events/:eventId", (req, res) => {
     return;
   }
   const resMap = {placeId: r[0].values[0][0], eventTime: r[0].values[0][1], 
-    users: {}};
+    users: []};
   
   r = db.exec(`
     REPLACE INTO EventUsers (eventId, userName, estimatedArrivalTime, 
       lastUpdatedTime) VALUES (${eventId}, "${req.body.userName}", 
       "${req.body.estimatedArrivalTime}", "${req.body.lastUpdatedTime}");
     SELECT userName, estimatedArrivalTime, lastUpdatedTime FROM EventUsers
-      WHERE eventId=${eventId};
+      WHERE eventId=${eventId} ORDER BY userName COLLATE NOCASE ASC;
   `);
   if (!r || !r[0] || !r[0].values || r[0].values.length == 0 || 
       !r[0].values.every((user) => user.length == 3)) {
     perror(req, res, "select eventId from EventUsers table failed");
     return;
   }
-  r[0].values.forEach((user) => resMap.users[user[0]] = 
-    {estimatedArrivalTime: user[1], lastUpdatedTime: user[2]});
+  console.log(r[0].values);
+  
+  r[0].values.forEach((user) => resMap.users.push(
+    {userName: user[0], estimatedArrivalTime: user[1], lastUpdatedTime: user[2]}));
   logResult(req, res, resMap);
 });
 
