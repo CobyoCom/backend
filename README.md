@@ -36,18 +36,13 @@ POST /api/events/:eventId
 }
 
 [RESPONSE]
-{
-  placeId: $placeId, 
-  eventTime: $eventTime, 
-  users: 
-  [
-    {
-      userName: $userName,
-      estimatedArrivalTime: $estimatedArrivalTime, 
-      lastUpdatedTIme: $lastUpdatedTime
-    }, ...
-  ]
-}
+[
+  {
+    userName: $userName,
+    estimatedArrivalTime: $estimatedArrivalTime, 
+    lastUpdatedTIme: $lastUpdatedTime
+  }, ...
+]
 
 4. Example 1: Create Event
 
