@@ -48,6 +48,7 @@ app.post("/api/events", (req, res) => {
     perror(req, res, "missing placeId or eventTime in body");
     return;
   }
+  
   const r = db.exec(`
     INSERT INTO Events (placeId, eventTime) 
       VALUES ("${req.body.placeId}", "${req.body.eventTime}");
@@ -72,7 +73,7 @@ app.get("/api/events/:eventId", (req, res) => {
   }
   const eventId = Number(req.params.eventId);
   const r = db.exec(`
-    SELECT placeId, eventTime from Events where eventId=${eventId} limit 1
+    SELECT placeId, eventTime from Events where eventId = ${eventId} limit 1
   `);
   if (r && !r[0]) {
     perror(req, res, "eventId doesn't exist", 404);
@@ -105,17 +106,18 @@ app.post("/api/events/:eventId", (req, res) => {
 
   const r = db.exec(`
     SELECT userName, estimatedArrivalTime, lastUpdatedTime FROM EventUsers
-      WHERE eventId=${eventId} AND userName != "${req.body.userName}"
+      WHERE eventId = ${eventId} AND userName != "${req.body.userName}"
       ORDER BY userName COLLATE NOCASE ASC;
   `);
-  if (!r || !r[0] || !r[0].values || !r[0].values.every((user) => user.length == 3)) {
-    perror(req, res, "select eventId from EventUsers table failed");
-    return;
-  }
   
   const users = []; 
-  r[0].values.forEach((user) => users.push({userName: user[0], estimatedArrivalTime: user[1], lastUpdatedTime: user[2]}));
+
+  if (r && r[0] && r[0].values && r[0].values[0] && r[0].values.every((user) => user.length == 3)) {
+    r[0].values.forEach((user) => users.push({userName: user[0], estimatedArrivalTime: user[1], lastUpdatedTime: user[2]}));
+  }
+
   logResult(req, res, users);
+
 });
 
 app.listen(app.get("port"));
