@@ -13,8 +13,9 @@ app.get("/api/events/:eventId", getEvent);
 app.post("/api/events/:eventId", updateEvent) 
 
 fs.stat("./build/", (err, stats) => {
-  if (err) { app.listen(3001); } 
-  else {
+  if (err) { 
+    app.listen(3001); 
+  } else {
     app.use(express.static(__dirname + "/build"));
     selfSignedHttps(app).listen(3000, '0.0.0.0');
   }
@@ -30,7 +31,7 @@ function dbSeed() {
       placeName TEXT NOT NULL,
       eventTime TEXT NOT NULL
     );
-    INSERT INTO Events (placeId, placeName, eventTime) VALUES ("ChIJ7VHBwnZ644kRKRWP5Qe27v4", "What location is this", datetime('now'));
+    INSERT INTO Events (placeId, placeName, eventTime) VALUES ("ChIJ7VHBwnZ644kRKRWP5Qe27v4", "Royale", datetime('now'));
     
     CREATE TABLE EventUsers ( 
       eventId INTEGER NOT NULL, 
