@@ -38,6 +38,7 @@ function dbSeed() {
       PRIMARY KEY (eventId, userName), 
       FOREIGN KEY (eventId) REFERENCES Events (eventId) ON DELETE CASCADE 
     ) WITHOUT ROWID;
+    INSERT INTO Events (placeId, eventTime) VALUES ("ChIJ7VHBwnZ644kRKRWP5Qe27v4", datetime('now'));
   `);
   return db;
 }
