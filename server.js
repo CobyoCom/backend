@@ -26,9 +26,12 @@ function dbSeed() {
     PRAGMA FOREIGN_KEYS = ON;
     CREATE TABLE Events ( 
       eventId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, 
-      placeId TEXT NOT NULL, 
-      eventTime TEXT NOT NULL 
+      placeId TEXT NOT NULL,
+      placeName TEXT NOT NULL,
+      eventTime TEXT NOT NULL
     );
+    INSERT INTO Events (placeId, placeName, eventTime) VALUES ("ChIJ7VHBwnZ644kRKRWP5Qe27v4", "What location is this", datetime('now'));
+    
     CREATE TABLE EventUsers ( 
       eventId INTEGER NOT NULL, 
       userName TEXT NOT NULL, 
@@ -38,15 +41,14 @@ function dbSeed() {
       PRIMARY KEY (eventId, userName), 
       FOREIGN KEY (eventId) REFERENCES Events (eventId) ON DELETE CASCADE 
     ) WITHOUT ROWID;
-    INSERT INTO Events (placeId, eventTime) VALUES ("ChIJ7VHBwnZ644kRKRWP5Qe27v4", datetime('now'));
   `);
   return db;
 }
 
 function createEvent(req, res) {
-  if (!req.body.placeId || !req.body.eventTime) { perror(req, res, "missing placeId or eventTime in body"); return; }
+  if (!req.body.placeId || !req.body.placeName || !req.body.eventTime) { perror(req, res, "missing placeId, placeName or eventTime"); return; }
   
-  const r = db.exec(`INSERT INTO Events (placeId, eventTime) VALUES ("${req.body.placeId}", "${req.body.eventTime}"); SELECT last_insert_rowid();`);
+  const r = db.exec(`INSERT INTO Events (placeId, placeName, eventTime) VALUES ("${req.body.placeId}", "${req.body.placeName}", "${req.body.eventTime}"); SELECT last_insert_rowid();`);
   
   if (!r || !r[0] || !r[0].values || r[0].values[0].length != 1) { perror(req, res, "last_insert_rowid() failed"); return; }
   
@@ -58,12 +60,12 @@ function getEvent(req, res) {
   if (!req.params.eventId.match(/^[0-9]+$/)) { perror(req, res, "eventId not positive integer", 404); return; }
   
   const eventId = Number(req.params.eventId);
-  const r = db.exec(`SELECT placeId, eventTime FROM Events WHERE eventId = ${eventId} LIMIT 1`);
+  const r = db.exec(`SELECT placeId, placeName, eventTime FROM Events WHERE eventId = ${eventId} LIMIT 1`);
   
   if (r && !r[0]) { perror(req, res, "eventId doesn't exist", 404); return; }
-  if (!r || !r[0].values || !r[0].values[0] || r[0].values[0].length != 2) { perror(req, res, "select eventId from Events table failed"); return; }
+  if (!r || !r[0].values || !r[0].values[0] || r[0].values[0].length != 3) { perror(req, res, "select eventId from Events table failed"); return; }
   
-  logResult(req, res, {placeId: r[0].values[0][0], eventTime: r[0].values[0][1]});
+  logResult(req, res, {placeId: r[0].values[0][0], placeName: r[0].values[0][1], eventTime: r[0].values[0][2]});
 }
 
 function updateEvent(req, res) {
