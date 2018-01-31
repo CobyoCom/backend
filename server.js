@@ -31,7 +31,7 @@ function dbSeed() {
       placeName TEXT NOT NULL,
       eventTime TEXT NOT NULL
     );
-    INSERT INTO Events (placeId, placeName, eventTime) VALUES ("ChIJ7VHBwnZ644kRKRWP5Qe27v4", "Royale", datetime('now'));
+    INSERT INTO Events (placeId, placeName, eventTime) VALUES ("ChIJ7VHBwnZ644kRKRWP5Qe27v4", "Royale", datetime('now', 'localtime'));
     
     CREATE TABLE EventUsers ( 
       eventId INTEGER NOT NULL, 
