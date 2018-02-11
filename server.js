@@ -17,6 +17,8 @@ app.use(bodyParser.json()
 			"query:", JSON.stringify(req.query), 
 			"body:", JSON.stringify(req.body)].join(" "));
 	next(); 
+}).get("/api/dump", (req, res) => {
+	res.json(db.dump());
 }).post("/api/events", (req, res) => {
 	res.json(db.set("events", req.body));
 }).get("/api/events/:id", (req, res) => {
@@ -44,8 +46,4 @@ if (process.env.NODE_ENV != "production") {
 	});
 }
 
-function now() {
-	var d = new Date;
-	return [d.getFullYear(), d.getMonth()+1, d.getDate()].join("-") + " " + 
-		[d.getHours(), d.getMinutes(), d.getSeconds()].join(":");
-}
+function now() {return new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '');}
