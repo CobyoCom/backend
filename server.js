@@ -68,10 +68,6 @@ function durts(dur) {
 
 function changes(a, b) {
 	if (!b.eventId || !b.userName) return;
-	console.log("----------------------------");
-	console.log(JSON.stringify(a));
-	console.log(JSON.stringify(b));
-	console.log("----------------------------");
 	const ret = [b.userName];
 	
 	if (!Object.keys(a).length) {
