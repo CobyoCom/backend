@@ -39,8 +39,8 @@ if (process.env.NODE_ENV != "production") {
 		res.sendFile(__dirname + "/build/index.html");
 	});
 	https.createServer({
-		key: fs.readFileSync("server.key"), 
-		cert: fs.readFileSync("server.crt"), 
+		key: fs.readFileSync("https.key"), 
+		cert: fs.readFileSync("https.crt"), 
 	}, app).listen(3000, () => {
 		console.log("[" + now() + "] PROD WEB server started at 3000");
 	});
