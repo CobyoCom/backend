@@ -1,89 +1,51 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const sqlite = require("sql.js");
 const fs = require("fs");
-const selfSignedHttps = require("self-signed-https");
+const http = require("http");
+const https = require("https");
+const dbwrap = require("./dbwrap");
 
-const db = dbSeed();
+const db = new dbwrap();
+db.set("events", {placeId: "ChIJ7VHBwnZ644kRKRWP5Qe27v4", placeName: "Royale", 
+	eventTime: now()}, {});
+
 const app = express();
-
-app.use(bodyParser.json());
-app.post("/api/events", createEvent);
-app.get("/api/events/:eventId", getEvent);
-app.post("/api/events/:eventId", updateEvent) 
-
-fs.stat("./build/", (err, stats) => {
-  if (err) { 
-    app.listen(3001); 
-  } else {
-    app.use(express.static(__dirname + "/build"));
-    app.get("*", (req, res) => {res.sendFile(__dirname + "/build/index.html")});
-    selfSignedHttps(app).listen(3000, "0.0.0.0");
-  }
+app.use(bodyParser.json()
+).use((req, res, next) => {
+	console.log(["[" + now() + "]", req.method, req.path, 
+			"params:", JSON.stringify(req.params), 
+			"query:", JSON.stringify(req.query), 
+			"body:", JSON.stringify(req.body)].join(" "));
+	next(); 
+}).post("/api/events", (req, res) => {
+	res.json(db.set("events", req.body));
+}).get("/api/events/:id", (req, res) => {
+	res.json(db.get("events", req.params, req.query));
+}).get("/api/events/:eventId/users", (req, res) => { 
+	res.json(db.get("eventUsers", req.params, req.query, false));
+}).put("/api/events/:eventId/users/:userName", (req, res) => { 
+	res.json(db.set("eventUsers", req.body, req.params));
 });
-
-function dbSeed() {
-  const db = new sqlite.Database();
-  db.run(`
-    PRAGMA FOREIGN_KEYS = ON;
-    CREATE TABLE Events ( 
-      eventId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, 
-      placeId TEXT NOT NULL,
-      placeName TEXT NOT NULL,
-      eventTime TEXT NOT NULL
-    );
-    INSERT INTO Events (placeId, placeName, eventTime) VALUES ("ChIJ7VHBwnZ644kRKRWP5Qe27v4", "Royale", datetime("now", "localtime"));
-    
-    CREATE TABLE EventUsers ( 
-      eventId INTEGER NOT NULL, 
-      userName TEXT NOT NULL, 
-      estimatedArrivalTime TEXT NOT NULL, 
-      lastUpdatedTime TEXT NOT NULL,
-      travelMode TEXT NOT NULL,
-      PRIMARY KEY (eventId, userName), 
-      FOREIGN KEY (eventId) REFERENCES Events (eventId) ON DELETE CASCADE 
-    ) WITHOUT ROWID;
-  `);
-  return db;
+	
+if (process.env.NODE_ENV != "production") {
+	http.createServer(app).listen(3001, () => {
+		console.log("[" + now() + "] DEV API server started at 3001");
+	});
+} else {
+	app.use(express.static(__dirname + "/build"))
+	.get("*", (req, res) => {
+		res.sendFile(__dirname + "/build/index.html");
+	});
+	https.createServer({
+		key: fs.readFileSync("server.key"), 
+		cert: fs.readFileSync("server.crt"), 
+	}, app).listen(3000, () => {
+		console.log("[" + now() + "] PROD WEB server started at 3000");
+	});
 }
 
-function createEvent(req, res) {
-  if (!req.body.placeId || !req.body.placeName || !req.body.eventTime) { perror(req, res, "missing placeId, placeName or eventTime"); return; }
-  
-  const r = db.exec(`INSERT INTO Events (placeId, placeName, eventTime) VALUES ("${req.body.placeId}", "${req.body.placeName}", "${req.body.eventTime}"); SELECT last_insert_rowid();`);
-  
-  if (!r || !r[0] || !r[0].values || r[0].values[0].length != 1) { perror(req, res, "last_insert_rowid() failed"); return; }
-  
-  logResult(req, res, {eventId: r[0].values[0][0]});
+function now() {
+	var d = new Date;
+	return [d.getFullYear(), d.getMonth()+1, d.getDate()].join("-") + " " + 
+		[d.getHours(), d.getMinutes(), d.getSeconds()].join(":");
 }
-
-function getEvent(req, res) { 
-  if (!req.params.eventId) { perror(req, res, "eventId missing"); return; }
-  if (!req.params.eventId.match(/^[0-9]+$/)) { perror(req, res, "eventId not positive integer", 404); return; }
-  
-  const eventId = Number(req.params.eventId);
-  const r = db.exec(`SELECT placeId, placeName, eventTime FROM Events WHERE eventId = ${eventId} LIMIT 1`);
-  
-  if (r && !r[0]) { perror(req, res, "eventId doesn't exist", 404); return; }
-  if (!r || !r[0].values || !r[0].values[0] || r[0].values[0].length != 3) { perror(req, res, "select eventId from Events table failed"); return; }
-  
-  logResult(req, res, {placeId: r[0].values[0][0], placeName: r[0].values[0][1], eventTime: r[0].values[0][2]});
-}
-
-function updateEvent(req, res) {
-  if (!req.params.eventId || !req.body.userName || !req.body.estimatedArrivalTime || !req.body.lastUpdatedTime || !req.body.travelMode) { perror(req, res, "parameter for updateEvent missing"); return; }
-  if (!req.params.eventId.match(/^[0-9]+$/)) { perror(req, res, "eventId not positive integer", 404); return; }
-  
-  const eventId = Number(req.params.eventId);
-  db.run(`REPLACE INTO EventUsers (eventId, userName, estimatedArrivalTime, lastUpdatedTime, travelMode) VALUES (${eventId}, "${req.body.userName}", "${req.body.estimatedArrivalTime}", "${req.body.lastUpdatedTime}", "${req.body.travelMode}");`);
-  const r = db.exec(`SELECT userName, estimatedArrivalTime, lastUpdatedTime, travelMode FROM EventUsers WHERE eventId = ${eventId} AND userName != "${req.body.userName}" ORDER BY userName COLLATE NOCASE ASC;`);
-  
-  const users = []; 
-  if (r && r[0] && r[0].values && r[0].values[0] && r[0].values.every((user) => user.length == 4)) { r[0].values.forEach((user) => users.push({userName: user[0], estimatedArrivalTime: user[1], lastUpdatedTime: user[2], travelMode: user[3]})); }
-  
-  logResult(req, res, users);
-}
-
-function perror(req, res, msg, ecode=500) { console.error("%s %s %s", req.method, req.originalUrl, msg); res.sendStatus(ecode) }
-function logResult(req, res, resMap) { console.log("%s %s -> %s", req.method, req.originalUrl, JSON.stringify(resMap)); res.json(resMap); }
-
