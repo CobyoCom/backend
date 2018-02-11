@@ -1,71 +1,14 @@
 # backend
 
-1. Event Creation
+- POST /api/events {placeId, eventTime, eventName} => {id, ...}
+- GET /api/events/:id => {id, ...}
+- GET /api/events/:eventId/users?sortBy=userName&exclude=name => [{userName, ..}, ..]
+- PUT /api/events/:eventId/users/:userName {...} => {eventId, userName, ..}
+- GET /log/dump => { events: [rows..], eventUsers: [rows..] }
+- GET /log/ssh.log
+- GET /log/server.log
 
-[REQUEST]
-POST /api/events
-{
-  placeId: $placeId,
-  eventTime: $eventTime
-}
+- <events> eventId | placeId | eventTime | eventName
+- <eventUsers> (eventId, userName) | duration | lastUpdated | hasLeft | travelMode
 
-[Response]
-{
-  eventId: $eventId
-}
-
-2. Event Preview
-
-[REQUEST]
-GET /api/events/:eventId
-
-[RESPONSE]
-{
-  placeId: $placeId,
-  eventTime: $eventTime
-}
-
-3. Join Event / Login Event / Get Most Updated Event
-
-[REQUEST]
-POST /api/events/:eventId
-{
-  userName: $userName,
-  estimatedArrivalTime: $estimatedArrivalTime, 
-  lastUpdatedTime: $lastUpdatedTime
-}
-
-[RESPONSE]
-[
-  {
-    userName: $userName,
-    estimatedArrivalTime: $estimatedArrivalTime, 
-    lastUpdatedTIme: $lastUpdatedTime
-  }, ...
-]
-
-4. Example 1: Create Event
-
-- URL="cobyo.com/" (or "/events")
-- RENDER + FORM "Event place & time?"
-- POST "/api/events" / (placeId, eventTime) => eventId
-- REDIRECT URL="cobyo.com/events/:eventId"
-- RENDER + FORM "Enter your username?"
-- POST "/api/events/:eventId" / (userName, estimatedArrivalTime, lastUpdatedTime)
-  => placeId, eventTime, users: {userName: estimatedArrivalTime, lastUpdatedTime}
-- RENDER Event page
-
-
-5. Example 2: Follow straight to event URL
-- URL="cobyo.com/events/:eventId"
-- GET "/api/events/:eventId" => placeId, eventTime
-- RENDER + FORM "Enter your username?"
-- POST "/api/events/:eventId" / (userName, estimatedArrivalTime, lastUpdatedTime)
-  => placeId, eventTime, users: {userName: estimatedArrivalTime, lastUpdatedTime}
-- RENDER Event page
-
-
-6. DB Tables
-- <Events> eventId | placeId | eventTime
-- <EventUsers> (eventId, userName) | estimatedArrivalTime | lastUpdatedTime
 
