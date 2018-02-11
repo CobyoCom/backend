@@ -17,7 +17,7 @@ app.use(bodyParser.json()
 			"query:", JSON.stringify(req.query), 
 			"body:", JSON.stringify(req.body)].join(" "));
 	next(); 
-}).get("/api/dump", (req, res) => {
+}).get("/log/dump", (req, res) => {
 	res.json(db.dump());
 }).post("/api/events", (req, res) => {
 	res.json(db.set("events", req.body));
@@ -34,8 +34,10 @@ if (process.env.NODE_ENV != "production") {
 		console.log("[" + now() + "] DEV API server started at 3001");
 	});
 } else {
-	app.use(express.static(__dirname + "/build"))
-	.get("*", (req, res) => {
+	app.use(express.static(__dirname + "/build")
+	).get("/log/*", (req, res) => {
+		res.sendFile(__dirname + req.path)
+	}).get("*", (req, res) => {
 		res.sendFile(__dirname + "/build/index.html");
 	});
 	https.createServer({
