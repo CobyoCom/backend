@@ -6,7 +6,7 @@ const https = require("https");
 const dbwrap = require("./dbwrap");
 
 const db = new dbwrap();
-db.set("events", {placeId: "ChIJ7VHBwnZ644kRKRWP5Qe27v4", placeName: "Royale", 
+db.set("events", {placeId: "ChIJ7VHBwnZ644kRKRWP5Qe27v4", eventName: "Royale", 
 	eventTime: now()}, {});
 
 const app = express();
