@@ -72,24 +72,24 @@ function changes(a, b) {
 	
 	if (!Object.keys(a).length) {
 	 	ret.push(" joined");
-		if (b.hasLeft == "true" && b.lastUpdated && b.duration)
+		if (b.hasLeft && b.lastUpdated && b.duration)
 			ret.push(" with ETA of ", etats(b.lastUpdated, b.duration));
-		else if (b.hasLeft != "true" && b.duration) 
+		else if (!b.hasLeft && b.duration) 
 			ret.push(" with duration of ", durts(b.duration));
-	} else if (a.hasLeft == "true" && b.hasLeft != "true") {
+	} else if (a.hasLeft && !b.hasLeft) {
 		ret.push(" cancelled leaving");
 		if (b.duration) ret.push(", duration", durts(b.duration));
-	} else if (a.hasLeft != "true" && b.hasLeft == "true") {
+	} else if (!a.hasLeft && b.hasLeft) {
 	 	ret.push(" started leaving");
 		if (b.lastUpdated && b.duration) 
 			ret.push(", ETA", etats(b.lastUpdated, b.duration));
-	} else if (a.hasLeft != "true" && b.hasLeft != "true" && 
-		b.duration && (!a.duration || Math.abs(a.duration - b.duration) > THRESHOLD)) {
+	} else if (!a.hasLeft && !b.hasLeft && b.duration && 
+			(!a.duration || Math.abs(a.duration - b.duration) > THRESHOLD)) {
 		ret.push(" changed duration to ", durts(b.duration));
-	} else if (a.hasLeft == "true" && b.hasLeft == "true" && 
-			b.duration && b.lastUpdated && (!a.duration || !a.lastUpdated || 
-				Math.abs(new Date(a.lastUpdated).getTime() + a.duration - 
-					new Date(b.lastUpdated).getTime() - b.duration) > THRESHOLD)) {
+	} else if (a.hasLeft && b.hasLeft && b.duration && b.lastUpdated && 
+			(!a.duration || !a.lastUpdated || Math.abs(
+				new Date(a.lastUpdated).getTime() + a.duration - 
+				new Date(b.lastUpdated).getTime() - b.duration) > THRESHOLD)) {
 		ret.push(" changed ETA to ", etats(b.lastUpdated, b.duration));
 	} else if (b.travelMode && b.travelMode != a.travelMode) {
 		ret.push(" changed travel mode to");
