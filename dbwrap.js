@@ -8,21 +8,18 @@ dbwrap.prototype.del = function(table, where) { if (this.db[table]) this.db[tabl
 dbwrap.prototype.drop = function(table) { if (this.db[table]) delete this.db[table]; };
 dbwrap.prototype.get = function(table, where, query, one=true) {
 	var ret;
-	if (!this.db[table]) ret = one? {} : [];
-	else {
-		const ft = this.db[table].filter((row) => (contains(row, where) && !(query && query.exclude && row[query.sortBy] == query.exclude)));
-		if (query && query.sortBy) ft.sort((a,b) => a[query.sortBy].localeCompare(b[query.sortBy], options={sensitivity: "base"}));
-		if (ft.length == 0 && one) ret = {};
-		else if (one) ret = ft[0];
-		else ret = ft;
-	}
-	console.log(JSON.stringify(ret));
-	return ret;
+	if (!this.db[table]) this.db[table] = [];
+	const ft = this.db[table].filter((row) => (contains(row, where) && !(query && query.exclude && row[query.sortBy] == query.exclude)));
+	if (query && query.sortBy) ft.sort((a,b) => a[query.sortBy].localeCompare(b[query.sortBy], options={sensitivity: "base"}));
+	if (ft.length == 0 && one) ret = {};
+	else if (one) ret = ft[0];
+	else ret = ft;
+	console.log(table + " GET: " + JSON.stringify(ret));
+	return JSON.parse(JSON.stringify(ret));
 }
 dbwrap.prototype.set = function(table, map, where=null){
 	var ret;
 	if (!this.db[table]) this.db[table] = [];
-	if (!map) map = {};
 	const ft = this.db[table].filter((row) => contains(row, where));
 	if (ft.length == 0) {
 		for (prop in where) map[prop] = where[prop];
@@ -33,8 +30,8 @@ dbwrap.prototype.set = function(table, map, where=null){
 		for (prop in map) ft[0][prop] = map[prop];
 		ret = ft[0];
 	}
-	console.log(JSON.stringify(ret));
-	return ret;
+	console.log(table + " SET: " + JSON.stringify(ret));
+	return JSON.parse(JSON.stringify(ret));
 }
 dbwrap.prototype.dump = function() { 
 	console.log(JSON.stringify(this.db));
