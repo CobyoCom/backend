@@ -96,7 +96,7 @@ function changes(a, b) {
 	} else 
 		return;
 	
-	if (b.travelMode) ret.push(" by", b.travelMode.toLowerCase());
+	if (b.travelMode) ret.push(" by ", b.travelMode.toLowerCase());
 	db.set("eventNotifications", {
 		eventId: b.eventId, timestamp: ts(new Date()), message: ret.join("") + "."
 	});
