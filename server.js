@@ -3,18 +3,22 @@ const bodyParser = require("body-parser");
 const fs = require("fs");
 const http = require("http");
 const https = require("https");
+const moment = require('moment');
 const dbwrap = require("./dbwrap");
 
 const THRESHOLD = 1;
 
 const db = new dbwrap();
-db.set("events", {placeId: "ChIJ7VHBwnZ644kRKRWP5Qe27v4", eventName: "Royale", 
-	eventTime: ts(new Date())}, {});
+db.set("events", {
+	placeId: "ChIJ7VHBwnZ644kRKRWP5Qe27v4", eventName: "Royale", 
+	eventTime: moment().format("YYYY-MM-DD hh:mm:ss A")
+}, {});
 
 const app = express();
 app.use(bodyParser.json()
 ).use((req, res, next) => {
-	console.log(["[" + ts(new Date()) + "]", req.method, req.path, 
+	console.log(["[" + moment().format("YYYY-MM-DD hh:mm:ss A") + "]", 
+			req.method, req.path, 
 			"params:", JSON.stringify(req.params), 
 			"query:", JSON.stringify(req.query), 
 			"body:", JSON.stringify(req.body)].join(" "));
@@ -24,11 +28,7 @@ app.use(bodyParser.json()
 }).get("/log/*", (req, res) => {
 	res.sendFile(__dirname + req.path);
 }).post("/api/events", (req, res) => {
-	const ret = db.set("events", req.body);
-	db.set("eventNotifications", {
-		eventId: ret.id, timestamp: ts(new Date()), message: "Event created."
-	});
-	res.json(ret);
+	res.json(db.set("events", req.body));
 }).get("/api/events/:id", (req, res) => {
 	res.json(db.get("events", req.params, req.query));
 }).get("/api/events/:eventId/users", (req, res) => { 
@@ -39,12 +39,12 @@ app.use(bodyParser.json()
 	changes(old, ret);
 	res.json(ret);
 }).get("/api/events/:eventId/notifications", (req, res) => {
-	res.json(db.get("eventNotifications", req.body, req.query, false));
+	res.json(db.get("eventNotifications", req.body, req.query, false).reverse());
 });
 	
 if (process.env.NODE_ENV != "production") {
 	http.createServer(app).listen(3001, () => {
-		console.log("[" + ts(new Date()) + "] DEV API server started at 3001");
+		console.log("[" + moment().format("YYYY-MM-DD hh:mm:ss A") + "] DEV API 3001");
 	});
 } else {
 	app.use(express.static(__dirname + "/build")).get("*", (req, res) => {
@@ -54,51 +54,36 @@ if (process.env.NODE_ENV != "production") {
 		key: fs.readFileSync("https.key"), 
 		cert: fs.readFileSync("https.crt"), 
 	}, app).listen(3000, () => {
-		console.log("[" + ts(new Date()) + "] PROD WEB server started at 3000");
+		console.log("[" + moment().format("YYYY-MM-DD hh:mm:ss A") + "] PROD WEB 3000");
 	});
-}
-
-function ts(t) {return t.toISOString().replace(/T/, ' ').replace(/\..+/, '');}
-function etats(lut, dur) {return ts(new Date(new Date(lut).getTime()+dur));}
-function durts(dur) {
-	if (dur < 60) return dur + " seconds";
-	else if (dur < 3600) return Math.round(dur/60) + " minutes";
-	else return Math.round(dur/360)/10 + " hours";
 }
 
 function changes(a, b) {
 	if (!b.eventId || !b.userName) return;
-	const ret = [b.userName];
+	const ret = [];
 	
-	if (!Object.keys(a).length) {
-	 	ret.push(" joined");
-		if (b.hasLeft && b.lastUpdated && b.duration)
-			ret.push(" with ETA of ", etats(b.lastUpdated, b.duration));
-		else if (!b.hasLeft && b.duration) 
-			ret.push(" with duration of ", durts(b.duration));
-	} else if (a.hasLeft && !b.hasLeft) {
-		ret.push(" cancelled leaving");
-		if (b.duration) ret.push(", duration", durts(b.duration));
-	} else if (!a.hasLeft && b.hasLeft) {
-	 	ret.push(" started leaving");
-		if (b.lastUpdated && b.duration) 
-			ret.push(", ETA", etats(b.lastUpdated, b.duration));
-	} else if (!a.hasLeft && !b.hasLeft && b.duration && 
-			(!a.duration || Math.abs(a.duration - b.duration) > THRESHOLD)) {
-		ret.push(" changed duration to ", durts(b.duration));
-	} else if (a.hasLeft && b.hasLeft && b.duration && b.lastUpdated && 
-			(!a.duration || !a.lastUpdated || Math.abs(
-				new Date(a.lastUpdated).getTime() + a.duration - 
-				new Date(b.lastUpdated).getTime() - b.duration) > THRESHOLD)) {
-		ret.push(" changed ETA to ", etats(b.lastUpdated, b.duration));
-	} else if (b.travelMode && b.travelMode != a.travelMode) {
-		ret.push(" changed travel mode to");
+	if (!Object.keys(a).length) 
+		ret.push("joined");
+	else if (a.hasLeft && !b.hasLeft) 
+		ret.push("cancelled");
+	else if (!a.hasLeft && b.hasLeft && b.lastUpdated && b.duration) 
+		ret.push("departed, ETA", moment(b.lastUpdated).add(b.duration,"s").format("hh:mm A"));
+	else if (a.hasLeft && b.hasLeft && a.duration && a.lastUpdated && b.duration && b.lastUpdated) {
+		x = Math.round(moment(b.lastUpdated).add(b.duration, "s").diff(moment(a.lastUpdated).add(a.duration))/(1000*60));
+		if (x > THRESHOLD) 
+			ret.push("is delayed by", x, "minutes");
+		else if (x < -THRESHOLD) 
+			ret.push("is earlier than expected by", -x, "minutes");
+		else 
+			return;
 	} else 
 		return;
 	
-	if (b.travelMode) ret.push(" by ", b.travelMode.toLowerCase());
 	db.set("eventNotifications", {
-		eventId: b.eventId, timestamp: ts(new Date()), message: ret.join("") + "."
+		eventId: b.eventId, 
+		userName: b.userName, 
+		timestamp: moment().format("YYYY-MM-DD hh:mm:ss A"),
+		message: ret.join(" ") + "."
 	});
 }
 

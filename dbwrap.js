@@ -33,8 +33,5 @@ dbwrap.prototype.set = function(table, map, where=null){
 	console.log(table + " SET: " + JSON.stringify(ret));
 	return JSON.parse(JSON.stringify(ret));
 }
-dbwrap.prototype.dump = function() { 
-	console.log("DUMP: " + JSON.stringify(this.db));
-	return this.db; 
-}
+dbwrap.prototype.dump = function() { return this.db; }
 
