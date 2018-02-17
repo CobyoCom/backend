@@ -6,7 +6,7 @@ const https = require("https");
 const moment = require('moment');
 const dbwrap = require("./dbwrap");
 
-const THRESHOLD = 1;
+const THRESHOLD = 5;
 
 const db = new dbwrap();
 db.set("events", {
@@ -69,7 +69,7 @@ function changes(a, b) {
 	else if (!a.hasLeft && b.hasLeft && b.lastUpdated && b.duration) 
 		ret.push("departed, ETA", moment(b.lastUpdated).add(b.duration,"s").format("hh:mm A"));
 	else if (a.hasLeft && b.hasLeft && a.duration && a.lastUpdated && b.duration && b.lastUpdated) {
-		x = Math.round(moment(b.lastUpdated).add(b.duration, "s").diff(moment(a.lastUpdated).add(a.duration))/(1000*60));
+		x = Math.round(moment(b.lastUpdated).add(b.duration, "s").diff(moment(a.lastUpdated).add(a.duration, "s"))/(1000*60));
 		if (x > THRESHOLD) 
 			ret.push("is delayed by", x, "minutes");
 		else if (x < -THRESHOLD) 
