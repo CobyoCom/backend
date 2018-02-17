@@ -39,7 +39,7 @@ app.use(bodyParser.json()
 	changes(old, ret);
 	res.json(ret);
 }).get("/api/events/:eventId/notifications", (req, res) => {
-	res.json(db.get("eventNotifications", req.body, req.query, false).reverse());
+	res.json(db.get("eventNotifications", req.params, req.query, false).reverse());
 });
 	
 if (process.env.NODE_ENV != "production") {
