@@ -65,7 +65,7 @@ function changes(a, b) {
 	if (!Object.keys(a).length) 
 		ret.push("joined");
 	else if (a.hasLeft && !b.hasLeft) 
-		ret.push("cancelled");
+		ret.push("paused");
 	else if (!a.hasLeft && b.hasLeft && b.lastUpdated && b.duration) 
 		ret.push("departed, ETA", moment(b.lastUpdated).add(b.duration,"s").format("hh:mm A"));
 	else if (a.hasLeft && b.hasLeft && a.duration && a.lastUpdated && b.duration && b.lastUpdated) {
