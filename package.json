@@ -1,12 +1,9 @@
 {
-  "name": "backend",
+  "name": "myLambda",
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "express": "4.13.3",
-    "sql.js": "0.3.2",
-    "body-parser": "1.18.2",
-    "self-signed-https": "1.0.5",
-    "moment": "^2.20.1"
+    "path-to-regexp": "2.1.0",
+    "moment": "2.20.1"
   }
 }
