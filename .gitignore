@@ -1,7 +1,0 @@
-package-lock.json
-frontend/
-build/
-node_modules/
-log/
-.*
-
