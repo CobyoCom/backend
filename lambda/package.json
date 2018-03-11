@@ -1,9 +1,0 @@
-{
-  "name": "myLambda",
-  "version": "0.0.1",
-  "private": true,
-  "dependencies": {
-    "path-to-regexp": "2.1.0",
-    "moment": "2.20.1"
-  }
-}

@@ -1,0 +1,115 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  ApiGateway:
+    Properties:
+      DefinitionBody:
+        info:
+          title: Cobyo-API
+          version: 1.0.0
+        paths:
+          /{proxy+}:
+            options:
+              responses:
+                '200':
+                  headers:
+                    Access-Control-Allow-Headers:
+                      type: string
+                    Access-Control-Allow-Methods:
+                      type: string
+                    Access-Control-Allow-Origin:
+                      type: string
+              x-amazon-apigateway-integration:
+                requestTemplates:
+                  application/json: '{''statusCode'':200}'
+                responses:
+                  default:
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Headers: '''*'''
+                      method.response.header.Access-Control-Allow-Methods: '''*'''
+                      method.response.header.Access-Control-Allow-Origin: '''https://cobyo.me'''
+                    statusCode: 200
+                type: mock
+            x-amazon-apigateway-any-method:
+              parameters:
+              - in: path
+                name: proxy
+                required: true
+                type: string
+              responses: {}
+              x-amazon-apigateway-integration:
+                httpMethod: POST
+                type: aws_proxy
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Lambda.Arn}/invocations
+        swagger: 2.0
+      StageName: prod
+    Type: AWS::Serverless::Api
+  Lambda:
+    Properties:
+      CodeUri: s3://cobyo.frontend/lambda.zip
+      Events:
+        ApiProxy:
+          Properties:
+            Method: ANY
+            Path: /{proxy+}
+            RestApiId:
+              Ref: ApiGateway
+          Type: Api
+      Handler: index.handler
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: TableEvent
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: TableUser
+      Runtime: nodejs6.10
+    Type: AWS::Serverless::Function
+  LambdaPermission:
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: Lambda
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*
+    Type: AWS::Lambda::Permission
+  Mapping:
+    DependsOn: ApiGatewayprodStage
+    Properties:
+      DomainName: api.cobyo.me
+      RestApiId:
+        Ref: ApiGateway
+      Stage: prod
+    Type: AWS::ApiGateway::BasePathMapping
+  TableEvent:
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TableName: Events
+    Type: AWS::DynamoDB::Table
+  TableUser:
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: eventId
+        AttributeType: S
+      - AttributeName: userName
+        AttributeType: S
+      KeySchema:
+      - AttributeName: eventId
+        KeyType: HASH
+      - AttributeName: userName
+        KeyType: RANGE
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      TableName: EventUsers
+    Type: AWS::DynamoDB::Table
+Transform: AWS::Serverless-2016-10-31
