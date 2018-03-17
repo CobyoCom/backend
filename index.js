@@ -1,6 +1,6 @@
 "use strict";
 const AWS = require("aws-sdk");
-const db = new AWS.DynamoDB.DocumentClient({endpoint: "http://localhost:8000", regiond: "us-east-1"}); 
+const db = new AWS.DynamoDB.DocumentClient({endpoint: "http://localhost:8000", region: "us-east-1"}); 
 const headers = {  
   "access-control-allow-headers": "content-type",
   "access-control-allow-methods": "GET,OPTIONS,POST,PUT",

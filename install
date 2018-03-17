@@ -1,0 +1,4 @@
+#!/bin/bash 
+npm install express
+npm install aws-sdk
+rm package-lock.json

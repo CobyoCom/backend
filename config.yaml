@@ -47,6 +47,12 @@ Resources:
   Lambda:
     Properties:
       CodeUri: s3://cobyo.frontend/lambda.zip
+      Environment:
+        Variables:
+          TABLE_EVENTS:
+          TABLE_USERS:
+          ENDPOINT:
+          
       Events:
         ApiProxy:
           Properties:
