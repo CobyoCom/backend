@@ -5,5 +5,6 @@ aws s3 cp lambda.zip s3://cobyo.frontend/lambda.zip
 rm lambda.zip
 aws cloudformation deploy --template-file config.yaml --stack cobyo --capabilities CAPABILITY_IAM
 aws s3 rm s3://cobyo.frontend/lambda.zip
-ctime=$(($(date +%s%N)/1000000))
-aws dynamodb put-item --table-name Events --item '{"id":{"S":"1"},"placeId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"},"eventName":{"S":"Royale"},"eventTime":{"S":"'"$ctime"'"}}'
+aws dynamodb put-item --table-name Events --item '{"id":{"S":"1"},"placeId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"},"eventName":{"S":"Royale"},"eventTime":{"N":'\"$(($(date +%s%N)/1000000))\"'}}'
+echo "Manual: Delete 'Stage' on api gateway, delete log-group on cloudwatch"
+

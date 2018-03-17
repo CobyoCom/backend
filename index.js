@@ -1,6 +1,6 @@
 "use strict";
 const AWS = require("aws-sdk");
-const db = new AWS.DynamoDB.DocumentClient({endpoint: "http://localhost:8000", region: "us-east-1"}); 
+const db = new AWS.DynamoDB.DocumentClient({endpoint: process.env.DYNAMODB_ENDPOINT, region: process.env.AWS_REGION}); 
 const headers = {  
   "access-control-allow-headers": "content-type",
   "access-control-allow-methods": "GET,OPTIONS,POST,PUT",
@@ -17,7 +17,7 @@ exports.handler = function(event, context, callback) {
 
   const put = () => {
     body.id = Math.floor(Math.random() * 10000).toString();
-    db.put({TableName: "Events", Item: body, ConditionExpression: "attribute_not_exists(id)"}, (err, data) => (
+    db.put({TableName: process.env.TABLE_EVENT, Item: body, ConditionExpression: "attribute_not_exists(id)"}, (err, data) => (
       err && err.code == "ConditionalCheckFailedException")? put(): (err)? ret(err.statusCode || 500, err): ret(200, body));
   }  
 	const exclude = (list) => {
@@ -48,19 +48,19 @@ exports.handler = function(event, context, callback) {
 	if ((params = ptr("/api/events", event.path)) && event.httpMethod == "POST")
 	  put();
   else if ((params = ptr("/api/events/:id", event.path)) && event.httpMethod == "GET") 
-    db.get({TableName: "Events", Key: {id: params[1]}}, (err, data) => {
+    db.get({TableName: process.env.TABLE_EVENT, Key: {id: params[1]}}, (err, data) => {
       (err)? ret(err.statusCode || 500, err): (!data.Item)? ret(404, {message: "eventId " + params[1] + " doesn't exist on DB"}): ret(200, data.Item);
     });
   else if ((params = ptr("/api/events/:eventId/users", event.path)) && event.httpMethod == "GET")
-		db.query({TableName: "EventUsers", KeyConditionExpression: "eventId = :1", ExpressionAttributeValues: {":1": params[1]}}, (err, data) => {
+		db.query({TableName: process.env.TABLE_USER, KeyConditionExpression: "eventId = :1", ExpressionAttributeValues: {":1": params[1]}}, (err, data) => {
 		  (err)? ret(err.statusCode || 500, err): ret(200, exclude(data.Items));
 		});
 	else if ((params = ptr("/api/events/:eventId/users/:userName", event.path)) && event.httpMethod == "PUT")
-		db.get({TableName: "EventUsers", Key: {eventId: params[1], userName: params[2]}}, (err, data) => {
-		  (err)? ret(err.statusCode || 500, err): merge(data.Item) && db.put({TableName: "EventUsers", Item: body}, (e,d) => (e)? ret(err.statusCode || 500, e): ret(200, body));
+		db.get({TableName: process.env.TABLE_USER, Key: {eventId: params[1], userName: params[2]}}, (err, data) => {
+		  (err)? ret(err.statusCode || 500, err): merge(data.Item) && db.put({TableName: process.env.TABLE_USER, Item: body}, (e,d) => (e)? ret(err.statusCode || 500, e): ret(200, body));
 		});
   else if ((params = ptr("/api/events/:eventId/notifications", event.path)) && event.httpMethod == "GET") 
-    db.query({TableName: "EventUsers", KeyConditionExpression: "eventId = :1", ExpressionAttributeValues: {":1": params[1]}}, (err, data) => {
+    db.query({TableName: process.env.TABLE_USER, KeyConditionExpression: "eventId = :1", ExpressionAttributeValues: {":1": params[1]}}, (err, data) => {
       (err)? ret(err.statusCode || 500, err): ret(200, data.Items)
     });
   else if ((params = ptr("/api/log", event.path)) && event.httpMethod == "POST") {

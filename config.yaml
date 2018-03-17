@@ -49,10 +49,12 @@ Resources:
       CodeUri: s3://cobyo.frontend/lambda.zip
       Environment:
         Variables:
-          TABLE_EVENTS:
-          TABLE_USERS:
-          ENDPOINT:
-          
+          DYNAMODB_ENDPOINT:
+            Fn::Sub: https://dynamodb.${AWS::Region}.amazonaws.com
+          TABLE_EVENT:
+            Ref: TableEvent
+          TABLE_USER:
+            Ref: TableUser
       Events:
         ApiProxy:
           Properties:
