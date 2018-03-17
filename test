@@ -1,0 +1,7 @@
+#!/bin/bash
+
+npm install express
+npm install aws-sdk
+rm package-lock.json
+java -jar DynamoDBLocal.jar -sharedDb -inMemory
+node api.js

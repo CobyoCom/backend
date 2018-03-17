@@ -1,39 +1,27 @@
 "use strict";
 const AWS = require("aws-sdk");
-const db = new AWS.DynamoDB.DocumentClient(); 
-const headers = {
-  "Access-Control-Allow-Origin": "https://cobyo.me",
-  "Access-Control-Allow-Methods": "*",
-  "Access-Control-Allow-Headers": "*"
+const db = new AWS.DynamoDB.DocumentClient({endpoint: "http://localhost:8000", regiond: "us-east-1"}); 
+const headers = {  
+  "access-control-allow-headers": "content-type",
+  "access-control-allow-methods": "GET,OPTIONS,POST,PUT",
+  "access-control-allow-origin": "https://cobyo.me"
 };
 
 exports.handler = function(event, context, callback) {
-  const ok = (js) => callback(null, {
-    statusCode: 200,
-    headers: headers, 
-    body: JSON.stringify(js)
-  });
-  const no = () => callback(null, {
-    statusCode: 404,
-    headers: headers,
-    body: JSON.stringify({errorMessage: "Not Found"})
-  });
-  const er = (err) => callback(null, {
-    statusCode: 500,
-    headers: headers,
-    body: JSON.stringify(err)    
-  });
-  
-  const body = (event.body)? JSON.parse(event.body) : {};
-  const query = event.queryStringParameters;
-  var params;
-  
+  const ret = (code, js) => {
+    if (code >= 400) console.error((js.message = "ERROR " + event.httpMethod + " " + event.path +  " " + (event.body || "(no body)") + ": " + code + ", " + (js.message || "(no message)")));
+    callback(null, {statusCode: code, headers: headers, body: JSON.stringify(js)});
+  }
+  var body = {}, params, query = event.queryStringParameters;
+  if (event.body) try {body = JSON.parse(event.body);} catch (error) {ret(400, {message: "Body cannot be parsed as JSON"}); return;}
+
   const put = () => {
     body.id = Math.floor(Math.random() * 10000).toString();
-    db.put({TableName: "Events", Item: body, ConditionExpression: "attribute_not_exists(id)"}, (err, data) => (err && err.code == "ConditionalCheckFailedException")? put(): (err)? er(err) : ok(body));
+    db.put({TableName: "Events", Item: body, ConditionExpression: "attribute_not_exists(id)"}, (err, data) => (
+      err && err.code == "ConditionalCheckFailedException")? put(): (err)? ret(err.statusCode || 500, err): ret(200, body));
   }  
 	const exclude = (list) => {
-	  if (query && query.exclude) for (var i = 0; i < list.length; i++) if (list[i].userName == query.exclude) {list.splice(i,1); break;} 
+	  if (query && query.exclude) for (var i = 0; i < list.length; i++) if (list[i].userName == query.exclude) {list.splice(i,1); break;}
 	  return list;
 	}
 	const merge = (d) => {
@@ -44,9 +32,9 @@ exports.handler = function(event, context, callback) {
 	  if (d.hasLeft && !body.hasLeft) ret += "paused";
     else if (!d.hasLeft && body.hasLeft) ret += "departed";
     else if (d.hasLeft && body.hasLeft) {
-      const x = Math.round(((Date.parse(body.lastUpdated) - Date.parse(d.lastUpdated))/1000 + Number(body.duration) - Number(d.duration))/60)
-      if (x > 5) ret += "is delayed by " + x + " minutes"
-      else if (x < -5) ret += "is earlier than expected by " + (-x) + " minutes"
+      const x = Math.round((body.lastUpdated - d.lastUpdated + body.duration - d.duration)/(60*1000))
+      if (x >= 5) ret += "is delayed by " + x + " minutes"
+      else if (x <= -5) ret += "is earlier than expected by " + (-x) + " minutes"
     } 
 
     body["id"] = params[1] + "_" + params[2];
@@ -54,21 +42,31 @@ exports.handler = function(event, context, callback) {
     body["userName"] = params[2];
     if (ret != "") body["message"] = ret;
     body["timestamp"] = body.lastUpdated;
-    return body;
+    return true;
 	}
 
 	if ((params = ptr("/api/events", event.path)) && event.httpMethod == "POST")
 	  put();
   else if ((params = ptr("/api/events/:id", event.path)) && event.httpMethod == "GET") 
-    db.get({TableName: "Events", Key: {id: params[1]}}, (err, data) => (err)? er(err): (!data.Item)? no(): ok(data.Item));
+    db.get({TableName: "Events", Key: {id: params[1]}}, (err, data) => {
+      (err)? ret(err.statusCode || 500, err): (!data.Item)? ret(404, {message: "eventId " + params[1] + " doesn't exist on DB"}): ret(200, data.Item);
+    });
   else if ((params = ptr("/api/events/:eventId/users", event.path)) && event.httpMethod == "GET")
-		db.query({TableName: "EventUsers", KeyConditionExpression: "eventId = :1", ExpressionAttributeValues: {":1": params[1]}}, (err, data) => (err)? er(err): ok(exclude(data.Items)));
+		db.query({TableName: "EventUsers", KeyConditionExpression: "eventId = :1", ExpressionAttributeValues: {":1": params[1]}}, (err, data) => {
+		  (err)? ret(err.statusCode || 500, err): ret(200, exclude(data.Items));
+		});
 	else if ((params = ptr("/api/events/:eventId/users/:userName", event.path)) && event.httpMethod == "PUT")
-		db.get({TableName: "EventUsers", Key: {eventId: params[1], userName: params[2]}}, (err, data) => (err)? er(err): merge(data.Item) && db.put({TableName: "EventUsers", Item: body}, (e,d) => (e)? er(e): ok(body)));
+		db.get({TableName: "EventUsers", Key: {eventId: params[1], userName: params[2]}}, (err, data) => {
+		  (err)? ret(err.statusCode || 500, err): merge(data.Item) && db.put({TableName: "EventUsers", Item: body}, (e,d) => (e)? ret(err.statusCode || 500, e): ret(200, body));
+		});
   else if ((params = ptr("/api/events/:eventId/notifications", event.path)) && event.httpMethod == "GET") 
-    db.query({TableName: "EventUsers", KeyConditionExpression: "eventId = :1", ExpressionAttributeValues: {":1": params[1]}}, (err, data) => (err)? er(err): ok(data.Items));
-  else 
-    no();
+    db.query({TableName: "EventUsers", KeyConditionExpression: "eventId = :1", ExpressionAttributeValues: {":1": params[1]}}, (err, data) => {
+      (err)? ret(err.statusCode || 500, err): ret(200, data.Items)
+    });
+  else if ((params = ptr("/api/log", event.path)) && event.httpMethod == "POST") {
+    console.error("ERROR Client: " + (event.body || "(no body)"));
+    ret(200, {});
+  } else ret(400, {message: "URL is not a valid endpoint"});
 }
 
 function ptr(str, matchingPath) {
