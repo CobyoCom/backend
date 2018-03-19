@@ -4,7 +4,7 @@ const db = new AWS.DynamoDB.DocumentClient({endpoint: process.env.DYNAMODB_ENDPO
 const headers = {  
   "access-control-allow-headers": "content-type",
   "access-control-allow-methods": "GET,OPTIONS,POST,PUT",
-  "access-control-allow-origin": "https://cobyo.me"
+  "access-control-allow-origin": process.env.ALLOW_ORIGIN
 };
 
 exports.handler = function(event, context, callback) {
@@ -65,6 +65,8 @@ exports.handler = function(event, context, callback) {
     });
   else if ((params = ptr("/api/log", event.path)) && event.httpMethod == "POST") {
     console.error("ERROR Client: " + (event.body || "(no body)"));
+    ret(200, {});
+  } else if (event.httpMethod == "OPTIONS") {
     ret(200, {});
   } else ret(400, {message: "URL is not a valid endpoint"});
 }
