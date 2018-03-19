@@ -5,7 +5,7 @@ export DYNAMODB_ENDPOINT=http://localhost:8000
 export AWS_REGION=us-east-1
 export ALLOW_ORIGIN=http://localhost:3000
 
-java -jar DynamoDBLocal.jar -sharedDb -inMemory &
+java -jar DynamoDBLocal.jar -sharedDb -inMemory >/dev/null & 
 PID=$!
 trap "kill -TERM $PID" TERM INT
 
