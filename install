@@ -1,4 +1,5 @@
 #!/bin/bash 
 npm install express
 npm install aws-sdk
+npm install graphql
 rm -f package-lock.json
