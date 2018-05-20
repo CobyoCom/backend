@@ -54,8 +54,6 @@ Resources:
             Fn::Sub: https://dynamodb.${AWS::Region}.amazonaws.com
           TABLE_EVENT:
             Ref: TableEvent
-          TABLE_USER:
-            Ref: TableUser
       Events:
         ApiProxy:
           Properties:
@@ -69,9 +67,6 @@ Resources:
       - DynamoDBCrudPolicy:
           TableName:
             Ref: TableEvent
-      - DynamoDBCrudPolicy:
-          TableName:
-            Ref: TableUser
       Runtime: nodejs6.10
     Type: AWS::Serverless::Function
   LambdaPermission:
@@ -93,32 +88,12 @@ Resources:
     Type: AWS::ApiGateway::BasePathMapping
   TableEvent:
     Properties:
-      AttributeDefinitions:
-      - AttributeName: id
-        AttributeType: S
-      KeySchema:
-      - AttributeName: id
-        KeyType: HASH
+      PrimaryKey:
+        Name: eventId
+        Type: String
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
       TableName: Events
-    Type: AWS::DynamoDB::Table
-  TableUser:
-    Properties:
-      AttributeDefinitions:
-      - AttributeName: eventId
-        AttributeType: S
-      - AttributeName: userName
-        AttributeType: S
-      KeySchema:
-      - AttributeName: eventId
-        KeyType: HASH
-      - AttributeName: userName
-        KeyType: RANGE
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
-      TableName: EventUsers
-    Type: AWS::DynamoDB::Table
+    Type: AWS::Serverless::SimpleTable
 Transform: AWS::Serverless-2016-10-31

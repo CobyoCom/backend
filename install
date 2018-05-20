@@ -2,4 +2,5 @@
 npm install express
 npm install aws-sdk
 npm install graphql
+npm install fs
 rm -f package-lock.json

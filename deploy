@@ -2,7 +2,8 @@
 
 rm -rf node_modules
 npm install graphql
-zip -r lambda.zip index.js node_modules
+npm install fs
+zip -r lambda.zip index.js graphql node_modules
 aws s3 cp lambda.zip s3://cobyo.frontend/lambda.zip
 rm -rf lambda.zip node_modules
 aws cloudformation deploy --template-file config.yaml --stack cobyo --capabilities CAPABILITY_IAM

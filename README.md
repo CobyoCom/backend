@@ -10,6 +10,6 @@ To deploy:
 To run locally: 
 ```
 ./install (installs node_modules)
-./server (Ctrl+C to kill)
+./run (Ctrl+C to kill)
 ./check (checks whether the server is running)
 ```
