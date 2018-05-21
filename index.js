@@ -15,13 +15,14 @@ exports.handler = function(event, context, callback) {
     }
   };
   // Async graphql
-  if (event.path == "/graphql") handleGraphQL(event.body, ret, callback);
-  else {
-    if (event.path == "/log") console.error("CLIENT ERROR: " + event.body);
-    else if (event.httpMethod != "OPTIONS") {
-      ret["statusCode"] = 404;
-      console.error("ERROR " + event.httpMethod + " " + event.path +  " " + (event.body || "(no body)") + ": 400, invalid path");
-    }
+  if (event.httpMethod == "OPTIONS") callback(null, ret);
+  else if (event.path == "/graphql") handleGraphQL(event.body, ret, callback);
+  else if (event.path == "/log") {
+    console.error("CLIENT ERROR: " + event.body);
+    callback(null, ret);
+  } else {
+    ret["statusCode"] = 404;
+    console.error("ERROR " + event.httpMethod + " " + event.path +  " " + (event.body || "(no body)") + ": 400, invalid path");
     callback(null, ret);
   }
 };
