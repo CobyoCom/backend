@@ -34,7 +34,7 @@ module.exports.build = function({mutation}) {
       eventId: { type: new GraphQLNonNull(GraphQLString) },
       userName: { type: new GraphQLNonNull(GraphQLString) },
       duration: { type: GraphQLInt },
-      lastUpdated: { type: GraphQLInt },
+      updatedAt: { type: GraphQLInt },
       travelMode: { type: GraphQLString },
       hasLeft: { type: GraphQLBoolean }
     },
