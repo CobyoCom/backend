@@ -22,8 +22,8 @@ ps a | grep --color=auto "node -e"
 
 echo "============================="
 echo "endpoint /graphql query event 1 works?"
+JSON_BODY='{"query":"{event(eventId:\"1\"){placeId,notifications{notificationId}}}"}'
 echo "Request: "$JSON_BODY
-JSON_BODY='{"query":"{event(eventId:\"1\"){placeId}}"}'
 curl localhost:3001/graphql -XPOST -d $JSON_BODY
 echo ""
 

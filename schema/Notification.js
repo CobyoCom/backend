@@ -17,7 +17,7 @@ module.exports.build = function(_) { };
 module.exports.fieldForEvent = {
   type: new GraphQLList(type),
   resolve: function(event, _, {db, Events}) {
-    throw new Error("Not Implemented");
+    return (event.notifications || []);
   }
 };
 /*    db.query({
