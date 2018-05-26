@@ -14,7 +14,6 @@ exports.handler = function(event, context, callback) {
       "access-control-allow-origin": process.env.ALLOW_ORIGIN
     }
   };
-  // Async graphql
   if (event.httpMethod == "OPTIONS") callback(null, ret);
   else if (event.path == "/graphql") handleGraphQL(event.body, ret, callback);
   else if (event.path == "/log") {
@@ -31,7 +30,6 @@ function handleGraphQL(params, ret, callback) {
   const body = JSON.parse(params);
   const query = {};
   const mutation = {};
-  //TODO async?
   fs.readdirSync(__dirname + SCHEMA_DIR).forEach(function(file) {
     require("." + SCHEMA_DIR + "/" + file).build({query, mutation});
   });

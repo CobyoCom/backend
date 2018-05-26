@@ -21,10 +21,7 @@ module.exports.build = function({query, mutation}) {
     args: { eventId: { type: new GraphQLNonNull(GraphQLString) } },
     resolve: function(_, {eventId}, {db, Events}) {
       return new Promise(function (resolve, reject) {
-        db.get({ 
-          TableName: Events, 
-          Key: {eventId} 
-        }, function (err, data) {
+        db.get({TableName: Events, Key: {eventId}}, function (err, data) {
           if (err) return reject(err.message);
           if (!data.Item) return reject("eventId " + eventId + " doesn't exist on DB");
           return resolve(data.Item);
@@ -42,11 +39,7 @@ module.exports.build = function({query, mutation}) {
     resolve: function(_, {placeId, eventName}, {db, Events}) {
       function put(resolve, reject) {
         const eventId = Math.floor(Math.random() * 10000).toString();
-        db.put({
-          TableName: Events,
-          Item: {eventId, placeId, eventName},
-          ConditionExpression: "attribute_not_exists(eventId)"
-        }, function (err, data) {
+        db.put({TableName: Events, Item: {eventId, placeId, eventName, eventUsers: [], notifications: []}, ConditionExpression: "attribute_not_exists(eventId)"}, function (err, data) {
           if (err && err.code == "ConditionalCheckFailedException") return put(resolve, reject);
           if (err) return reject(err.message);
           return resolve({eventId, placeId, eventName});
@@ -56,10 +49,3 @@ module.exports.build = function({query, mutation}) {
     }
   };
 }
-
-module.exports.fieldForUser = { 
-  type: new GraphQLList(type),
-  resolve: function(user, _, {db}) { 
-    throw new Error("Not Implemented");
-  }
-};
