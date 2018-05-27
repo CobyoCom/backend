@@ -42,7 +42,7 @@ module.exports.build = function({mutation}) {
             event.eventUsers.push(args);
             returnUser = args;
           } else {
-            if (targetUser.hasLeft && !args.hasLeft) message = userName + " paused";
+            if (targetUser.hasLeft && args.hasLeft == false) message = userName + " paused";
             else if (!targetUser.hasLeft && args.hasLeft) message = userName + " departed";
             else if (targetUser.hasLeft && targetUser.updatedAt && targetUser.duration 
                 && args.hasLeft && args.updatedAt && args.duration) {
