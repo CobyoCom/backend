@@ -3,6 +3,7 @@
 rm -rf node_modules
 npm install graphql
 npm install fs
+npm install web-push
 zip -r lambda.zip index.js graphql node_modules
 aws s3 cp lambda.zip s3://cobyo.frontend/lambda.zip
 rm -rf lambda.zip node_modules

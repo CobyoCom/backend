@@ -3,4 +3,5 @@ npm install express
 npm install aws-sdk
 npm install graphql
 npm install fs
+npm install web-push
 rm -f package-lock.json
