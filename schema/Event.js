@@ -9,6 +9,7 @@ const type = new GraphQLObjectType({
       eventId: { type: new GraphQLNonNull(GraphQLString) },
       placeId: { type: new GraphQLNonNull(GraphQLString) },
       eventName: { type: new GraphQLNonNull(GraphQLString) },
+      dateEnded: { type: GraphQLString },
       eventUsers: require("./EventUser").fieldForEvent,
       notifications: require("./Notification").fieldForEvent
     };
@@ -46,6 +47,38 @@ module.exports.build = function({query, mutation}) {
         });
       }
       return new Promise(put);
+    }
+  };
+
+  mutation.endEvent = {
+    type,
+    args: {eventId: {type: new GraphQLNonNull(GraphQLString)}},
+    resolve: function(_, {eventId}, {db, Events}) {
+      return new Promise((resolve, reject) => {
+        db.update({
+          TableName: Events,
+          Key: {eventId},
+          AttributeUpdates: {
+            'dateEnded': {
+              Action: 'ADD',
+              Value: (new Date()).getTime()
+            }
+          },
+          Expected: {
+            'eventId': {
+              ComparisonOperator: 'EQ',
+              Value: eventId
+            },
+            'dateEnded': {
+              Exists: false
+            }
+          },
+          ReturnValues: 'ALL_NEW'
+        }, (err, data) => {
+          if (err) return reject(err.message);
+          return resolve({...data.Attributes});
+        });
+      });
     }
   };
 }
