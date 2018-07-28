@@ -10,18 +10,19 @@ echo "DynamoDB is running?"
 ps a | grep --color=auto DynamoDB
 echo "============================="
 echo "List of local DynamoDB tables"
-aws --endpoint-url http://localhost:8000 dynamodb list-tables
+aws --endpoint-url http://localhost:9520 dynamodb list-tables
 echo "============================="
 echo "List of items in Events table"
-aws --endpoint-url http://localhost:8000 dynamodb scan --table-name Events
+aws --endpoint-url http://localhost:9520 dynamodb scan --table-name Events
 echo "============================="
 echo "Node.js is running?"
 ps a | grep --color=auto "node -e"
 echo "============================="
-test_post '{"query":"{event(eventId:\"1\"){placeId,eventName,eventUsers{userName},notifications{message}}}"}'
+test_post '{"query":"{event(eventId:\"1\"){placeId,eventName,dateEnded,eventUsers{userName},notifications{message}}}"}'
 test_post '{"query":"mutation{createEvent(placeId:\"hi\",eventName:\"bye\"){eventId}}"}'
 test_post '{"query":"mutation{updateEventUser(eventId:\"1\",userName:\"Seob\",duration:250,updatedAt:\"'$(date +%s)'\",travelMode:\"DRIVING\"){userName}}"}'
 test_post '{"query":"{event(eventId:\"1\"){eventUsers{userName,duration}}}"}'
 test_post '{"query":"{event(eventId:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}"}'
 test_post '{"query":"mutation{updateEventUser(eventId:\"1\",userName:\"Seob\",hasLeft:true){hasLeft}}"}'
 test_post '{"query":"{event(eventId:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}"}'
+test_post '{"query":"mutation{endEvent(eventId:\"1\"){dateEnded}}"}'
