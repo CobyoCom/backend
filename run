@@ -1,15 +1,95 @@
 #!/bin/bash
+DEFAULT_EVENT='{"eventId":{"S":"1"},"placeId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"},"eventName":{"S":"Royale"},"eventUsers":{"L":[]},"notifications":{"L":[]}}'
+# Lambda Process Environment Variables
 export DYNAMODB_ENDPOINT=http://localhost:9520
 export TABLE_EVENT=Events
-export AWS_REGION=us-east-1
 export ALLOW_ORIGIN=http://localhost:3000
+
+# Dev Environment Variables
+export AWS_REGION=us-east-1
 export VAPID_PUBLIC_KEY=BL_mVA1u7cqRZkb5cwF3fcT_371yrdXqBwXlQM5jTQL2yvrG0Tya2hEBxa_2AHntMjfMbEAOu020u1iKn7Rx-Uc
 export VAPID_PRIVATE_KEY=79jcrPY14NJWixhjyoxXnRcEYXamlg7wRrbv_Bu7qMc
 
-java -jar DynamoDBLocal.jar -sharedDb -inMemory -port 9520 >/dev/null &
-PID=$!
-trap "kill -TERM $PID" TERM INT
+function test_post {
+  echo "Request: "$1
+  curl localhost:3001/graphql -XPOST -d $1
+  echo ""
+  echo "============================="
+}
 
-aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb create-table --table-name $TABLE_EVENT --attribute-definitions AttributeName=eventId,AttributeType=S --key-schema AttributeName=eventId,KeyType=HASH --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 >/dev/null
-aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb put-item --table-name $TABLE_EVENT --item '{"eventId":{"S":"1"},"placeId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"},"eventName":{"S":"Royale"},"eventUsers":{"L":[]},"notifications":{"L":[]}}'
-node -e 'require("express")().use((req, res, next) => {req.body = ""; req.on("data", (d) => {req.body += d}); req.on("end", next);}).all("*", (req, res, next) => {require("./index").handler({httpMethod: req.method, path: req.path, queryStringParameters: req.query, body: req.body}, null, (err, data) => {res.status(data.statusCode).set(data.headers).send(data.body);});}).listen(3001, () => {console.log("DEV API server started at http://localhost:3001");});'
+case $1 in
+  "check")
+    echo "============================="
+    echo "DynamoDB is running?"
+    ps a | grep --color=auto DynamoDB
+    echo "============================="
+    echo "List of local DynamoDB tables"
+    aws --endpoint-url http://localhost:9520 dynamodb list-tables
+    echo "============================="
+    echo "List of items in Events table"
+    aws --endpoint-url http://localhost:9520 dynamodb scan --table-name Events
+    echo "============================="
+    echo "Node.js is running?"
+    ps a | grep --color=auto "node -e"
+    echo "============================="
+    test_post '{"query":"{event(eventId:\"1\"){placeId,eventName,dateEnded,eventUsers{userName},notifications{message}}}"}'
+    test_post '{"query":"mutation{createEvent(placeId:\"hi\",eventName:\"bye\"){eventId}}"}'
+    test_post '{"query":"mutation{updateEventUser(eventId:\"1\",userName:\"Seob\",duration:250,updatedAt:\"'$(date +%s)'\",travelMode:\"DRIVING\"){userName}}"}'
+    test_post '{"query":"{event(eventId:\"1\"){eventUsers{userName,duration}}}"}'
+    test_post '{"query":"{event(eventId:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}"}'
+    test_post '{"query":"mutation{updateEventUser(eventId:\"1\",userName:\"Seob\",hasLeft:true){hasLeft}}"}'
+    test_post '{"query":"{event(eventId:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}"}'
+    test_post '{"query":"mutation{endEvent(eventId:\"1\"){dateEnded}}"}'
+    ;;
+
+  "lambda")
+    rm -rf node_modules
+    echo "Installing node_modules..."
+    npm install graphql fs web-push &>/dev/null
+    echo "Zipping source files..."
+    zip -r lambda.zip index.js schema node_modules >/dev/null
+    echo "Uploading source package to S3..."
+    aws s3 cp lambda.zip s3://cobyo.backend/lambda.zip >/dev/null
+    rm -rf lambda.zip node_modules
+    eval `aws lambda list-functions | python -c "import json,sys; print \"export LAMBDA_FUNCTION_NAME=%s\" % json.load(sys.stdin)['Functions'][0]['FunctionName']"`
+    echo "Updating lambda function code for $LAMBDA_FUNCTION_NAME..."
+    aws lambda update-function-code --s3-bucket cobyo.backend --s3-key lambda.zip --function-name $LAMBDA_FUNCTION_NAME
+    ;;
+
+  "form")
+    aws cloudformation deploy --template-file config.yaml --stack cobyo --capabilities CAPABILITY_IAM
+    aws dynamodb put-item --table-name Events --item $DEFAULT_EVENT
+    echo "Manual: Delete 'Stage' on api gateway, delete log-group on cloudwatch"
+    ;;
+
+  "delete")
+    aws cloudformation delete-stack --stack-name cobyo
+    ;;
+
+  "dev")
+    java -jar DynamoDBLocal.jar -sharedDb -inMemory -port 9520 >/dev/null &
+    PID=$!
+    trap "kill -TERM $PID" TERM INT
+    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb create-table --table-name $TABLE_EVENT --attribute-definitions AttributeName=eventId,AttributeType=S --key-schema AttributeName=eventId,KeyType=HASH --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 >/dev/null
+    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb put-item --table-name $TABLE_EVENT --item $DEFAULT_EVENT
+    node -e 'require("express")().use((req, res, next) => {req.body = ""; req.on("data", (d) => {req.body += d}); req.on("end", next);}).all("*", (req, res, next) => {require("./index").handler({httpMethod: req.method, path: req.path, queryStringParameters: req.query, body: req.body}, null, (err, data) => {res.status(data.statusCode).set(data.headers).send(data.body);});}).listen(3001, () => {console.log("DEV API server started at http://localhost:3001");});'
+    ;;
+
+  "install")
+    npm install express aws-sdk
+    npm install graphql fs web-push
+    rm -f package-lock.json
+    ;;
+
+  *)
+    echo "Usage: ./run [command]"
+    echo ""
+    echo "[command]"
+    echo "check     checks whether local backend is running"
+    echo "lambda    deploys lambda only"
+    echo "form      deploys cloudformation"
+    echo "delete    deletes cloudformation"
+    echo "dev       runs local backend"
+    echo "install   installs local backend package"
+    ;;
+esac

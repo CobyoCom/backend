@@ -46,7 +46,7 @@ Resources:
     Type: AWS::Serverless::Api
   Lambda:
     Properties:
-      CodeUri: s3://cobyo.frontend/lambda.zip
+      CodeUri: s3://cobyo.backend/lambda.zip
       Environment:
         Variables:
           ALLOW_ORIGIN: https://cobyo.me
