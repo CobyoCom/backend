@@ -10,6 +10,7 @@ const type = new GraphQLObjectType({
       placeId: { type: new GraphQLNonNull(GraphQLString) },
       eventName: { type: new GraphQLNonNull(GraphQLString) },
       dateEnded: { type: GraphQLString },
+      photoReference: { type: GraphQLString },
       eventUsers: require("./EventUser").fieldForEvent,
       notifications: require("./Notification").fieldForEvent
     };
@@ -28,6 +29,8 @@ module.exports.build = function({query, mutation}) {
         }, function (err, data) {
           if (err) return reject(err.message);
           if (!data.Item) return reject("eventId " + eventId + " doesn't exist on DB");
+          //TODO do google maps API https://maps.googleapis.com/maps/api/place/details/output?parameters
+          data.Item.photoReference = "CmRaAAAAVaCpJG0LasFOzwZNggnzekfoJVQRC0QCP7xlV9xTcHS4UhyxpiqEMe2KJafwS9VOeG0Mv94zTyo5gj7dqUAiRX0VCf0fa3ITS3rUUUUzf9LT9YlYxDtXqtP8dNdV8kXVEhDx-thCnhYmMa5dCqXTZ7gDGhTvxI8wfAnV4Iv9OO55-7Rk8GOHog";
           return resolve(data.Item);
         });
       });
