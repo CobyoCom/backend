@@ -41,7 +41,7 @@ module.exports.build = function({query, mutation}) {
     type: type,
     args: {
       placeId: { type: new GraphQLNonNull(GraphQLString) },
-      eventName: { type: new GraphQLNonNull(GraphQLString) }
+      eventName: { type: new GraphQLNonNull(GraphQLString) },
     },
     resolve: function(_, {placeId, eventName}, {db, Events}) {
       function put(resolve, reject) {
@@ -57,40 +57,6 @@ module.exports.build = function({query, mutation}) {
         });
       }
       return new Promise(put);
-    }
-  };
-
-  mutation.editEvent = {
-    type: type,
-    args: {
-      eventId: { type: GraphQLNonNull(GraphQLString) },
-      placeId: { type: GraphQLString },
-      eventName: { type: GraphQLString }
-    },
-    resolve: function(_, {eventId, placeId, eventName}, {db, Events}) {
-      return new Promise(function(resolve, reject) {
-        if (!placeId && !eventName) {
-          return resolve();
-        }
-
-        db.update({
-          TableName: Events,
-          Key: { eventId },
-          UpdateExpression: (placeId && "SET #placeId = :placeId") + (eventName && ", #eventName = :eventName"),
-          ExpressionAttributeNames: {
-            "#placeId": "placeId",
-            "#eventName": "eventName"
-          },
-          ExpressionAttributeValues: {
-            ":placeId": placeId,
-            ":eventName": eventName
-          },
-          ReturnValues: 'ALL_NEW'
-        }, (err ,data) => {
-          if (err) return reject(err.message);
-          return resolve(data.Attributes);
-        });
-      });
     }
   };
 
