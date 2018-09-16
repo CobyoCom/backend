@@ -89,7 +89,7 @@ Resources:
   TableEvent:
     Properties:
       PrimaryKey:
-        Name: eventId
+        Name: id
         Type: String
       ProvisionedThroughput:
         ReadCapacityUnits: 1

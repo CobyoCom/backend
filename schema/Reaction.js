@@ -40,8 +40,8 @@ module.exports.build = function({mutation}) {
           if (err) return reject(err.message);
           if (!data.Item) return reject("eventCode " + eventCode + " doesn't exist on DB");
           const notifications = data.Item.notifications;
-          if (!notifications || notificationIndex < 0 || notificationIndex >= notifications.length) 
-            return reject("notification[" + notificationIndex + "] doesn't exist on DB " + 
+          if (!notifications || notificationIndex < 0 || notificationIndex >= notifications.length)
+            return reject("notification[" + notificationIndex + "] doesn't exist on DB " +
               "(notifications.length: " + ((notifications)? notifications.length : "null") + " )");
           const targetNotification = notifications[notificationIndex];
           const reactions = targetNotification.reactions || [];
@@ -53,7 +53,7 @@ module.exports.build = function({mutation}) {
             TableName: Events,
             Key: { id: eventCode },
             UpdateExpression: "SET notifications[" + notificationIndex + "].reactions = list_append(if_not_exists(notifications[" + notificationIndex + "].reactions, :empty_list), :x)",
-            ExpressionAttributeValues: { 
+            ExpressionAttributeValues: {
               ":x": [reaction],
               ":empty_list": [],
               ":notification_index": notificationIndex
@@ -88,8 +88,8 @@ module.exports.build = function({mutation}) {
           if (err) return reject(err.message);
           if (!data.Item) return reject("eventCode " + eventCode + " doesn't exist on DB");
           const notifications = data.Item.notifications;
-          if (!notifications || notificationIndex < 0 || notificationIndex >= notifications.length) 
-            return reject("notification[" + notificationIndex + "] doesn't exist on DB" + 
+          if (!notifications || notificationIndex < 0 || notificationIndex >= notifications.length)
+            return reject("notification[" + notificationIndex + "] doesn't exist on DB" +
               "(notifications.length: " + ((notifications) ? notifications.length : "null")+ " )");
           const targetNotification = notifications[notificationIndex];
           const reactions = targetNotification.reactions || [];
@@ -97,14 +97,11 @@ module.exports.build = function({mutation}) {
             return (elm.userName == reaction.userName && elm.emoji == reaction.emoji);
           });
           if (reactionIndex < 0) return resolve(reaction);
-          console.log(data.Item);
-          console.log(data.Item.notifications);
-          console.log(data.Item.notifications[0].reactions);
           db.update({
             TableName: Events,
             Key: { id: eventCode },
             UpdateExpression: "REMOVE notifications[" + notificationIndex + "].reactions[" + reactionIndex + "]",
-            ExpressionAttributeValues: { 
+            ExpressionAttributeValues: {
               ":userName": reaction.userName,
               ":emoji": reaction.emoji,
               ":notification_index": notificationIndex,

@@ -1,20 +1,32 @@
 "use strict";
 
-const {GraphQLObjectType, GraphQLNonNull, GraphQLString, GraphQLList} = require("graphql");
+const {GraphQLInputObjectType, GraphQLObjectType, GraphQLNonNull, GraphQLString, GraphQLList} = require("graphql");
 
 const type = new GraphQLObjectType({
   name: "Event",
   fields: function() {
     return {
-      code: { 
+      code: {
         type: new GraphQLNonNull(GraphQLString),
         resolve: function(event) { return event.id; }
       },
       name: { type: new GraphQLNonNull(GraphQLString) },
+      scheduledTime: { type: GraphQLString },
       dateEnded: { type: GraphQLString },
       place: require("./Place").EventToPlace,
       eventUsers: require("./EventUser").EventToEventUsers,
       notifications: require("./Notification").EventToNotifications
+    };
+  }
+});
+
+const inputType = new GraphQLInputObjectType({
+  name: "EventInput",
+  fields: function() {
+    return {
+      name: { type: GraphQLString },
+      scheduledTime: { type: GraphQLString },
+      place: require("./Place").EventInputToPlaceInput
     };
   }
 });
@@ -38,29 +50,56 @@ module.exports.build = function({query, mutation}) {
 
   mutation.createEvent = {
     type: new GraphQLNonNull(type),
-    args: {
-      place: require("./Place").createEventToPlaceInput,
-      name: { type: GraphQLString },
-    },
-    resolve: function(_, args, {db, Events}) {
+    args: { event: { type: new GraphQLNonNull(inputType) } },
+    resolve: function(_, {event}, {db, Events}) {
+      if (!event.name) event.name = "default";
       function put(resolve, reject) {
-        args.id = Math.floor(Math.random() * 10000).toString();
+        event.id = Math.floor(Math.random() * 10000).toString();
         db.put({
           TableName: Events,
-          Item: args,
+          Item: event,
           ConditionExpression: "attribute_not_exists(id)"
         }, function (err, data) {
           if (err && err.code == "ConditionalCheckFailedException") return put(resolve, reject);
           if (err) return reject(err.message);
-          return resolve(args);
+          return resolve(event);
         });
       }
       return new Promise(put);
     }
   };
 
+  mutation.editEvent = {
+    type: new GraphQLNonNull(type),
+    args: {
+      code: { type: new GraphQLNonNull(GraphQLString) },
+      event: { type: new GraphQLNonNull(inputType) }
+    },
+    resolve: function(_, {code, event}, {db, Events}) {
+      return new Promise(function(resolve, reject) {
+        const updateExpression = [];
+        const expressionAttributeValues = {};
+        Object.keys(event).forEach(function(key) {
+          updateExpression.push(key + " = " + ":" + key);
+          expressionAttributeValues[":" + key] = event[key];
+        });
+        db.update({
+          TableName: Events,
+          Key: {id: code},
+          UpdateExpression: "SET " + updateExpression.join(", "),
+          ExpressionAttributeValues: expressionAttributeValues,
+          ConditionExpression: "attribute_exists(id)",
+          ReturnValues: "ALL_NEW"
+        }, function(err, data) {
+          if (err) return reject(err.message);
+          return resolve(data.Attributes);
+        });
+      });
+    }
+  }
+
   mutation.endEvent = {
-    type: type,
+    type: new GraphQLNonNull(type),
     args: { code: { type: new GraphQLNonNull(GraphQLString) } },
     resolve: function(_, {code}, {db, Events}) {
       return new Promise(function(resolve, reject) {

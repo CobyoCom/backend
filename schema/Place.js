@@ -14,7 +14,7 @@ const type = new GraphQLObjectType({
       }
     }) },
     googlePlaceId: { type: GraphQLString },
-    photoUrl: { 
+    photoUrl: {
       type: GraphQLString,
       resolve: function(place) { return "https://envato-shoebox-0.imgix.net/2a41/93b3-6f8b-4f1c-8767-cd9772b4ded7/kave+310.jpg?w=500&h=278&fit=crop&crop=edges&auto=compress%2Cformat&s=fbc0d75299d7cfda0b3c60ea52ba4aaf"; }
     }
@@ -53,7 +53,7 @@ module.exports.EventToPlace = {
   }
 };
 
-module.exports.createEventToPlaceInput = { 
+module.exports.EventInputToPlaceInput = {
   type: inputType
 };
 
