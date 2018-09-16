@@ -10,7 +10,12 @@ const type = new GraphQLObjectType({
         type: new GraphQLNonNull(GraphQLString),
         resolve: function(event) { return event.id; }
       },
-      name: { type: new GraphQLNonNull(GraphQLString) },
+      name: {
+        type: new GraphQLNonNull(GraphQLString),
+        resolve: function(event) {
+          return event.eventName || "default";
+        }
+      },
       scheduledTime: { type: GraphQLString },
       dateEnded: { type: GraphQLString },
       place: require("./Place").EventToPlace,
@@ -52,7 +57,10 @@ module.exports.build = function({query, mutation}) {
     type: new GraphQLNonNull(type),
     args: { event: { type: new GraphQLNonNull(inputType) } },
     resolve: function(_, {event}, {db, Events}) {
-      if (!event.name) event.name = "default";
+      if (event.name) {
+        event.eventName = event.name;
+        delete event.name;
+      }
       function put(resolve, reject) {
         event.id = Math.floor(Math.random() * 10000).toString();
         db.put({
@@ -80,8 +88,10 @@ module.exports.build = function({query, mutation}) {
         const updateExpression = [];
         const expressionAttributeValues = {};
         Object.keys(event).forEach(function(key) {
+          const value = event[key];
+          if (key == "name") key = "eventName";
           updateExpression.push(key + " = " + ":" + key);
-          expressionAttributeValues[":" + key] = event[key];
+          expressionAttributeValues[":" + key] = value;
         });
         db.update({
           TableName: Events,

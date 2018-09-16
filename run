@@ -1,5 +1,5 @@
 #!/bin/bash
-DEFAULT_EVENT='{"id":{"S":"1"},"place":{"M":{"googlePlaceId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"}}},"name":{"S":"Royale"}}'
+DEFAULT_EVENT='{"id":{"S":"1"},"place":{"M":{"googlePlaceId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"}}},"eventName":{"S":"Royale"}}'
 # Lambda Process Environment Variables
 export DYNAMODB_ENDPOINT=http://localhost:9520
 export TABLE_EVENT=Events
@@ -35,7 +35,7 @@ case $1 in
     test_post 'mutation{createEvent(event:{place:{googlePlaceId:\"hi\"}}){code,name,dateEnded,scheduledTime,place{googlePlaceId,address,geocode{latitude,longitude},photoUrl}}}'
     test_post '{event(code:\"1\"){code,name,dateEnded,scheduledTime}}'
     test_post '{event(code:\"1\"){place{googlePlaceId,address,geocode{latitude,longitude},photoUrl}}}'
-    test_post 'mutation{editEvent(code:\"1\",event:{place:{address:\"hi\"},scheduledTime:\"123\"}){code,name,dateEnded,scheduledTime,place{address}}}'
+    test_post 'mutation{editEvent(code:\"1\",event:{place:{address:\"hi\"},name:\"royale\",scheduledTime:\"123\"}){code,name,dateEnded,scheduledTime,place{address}}}'
     test_post '{event(code:\"1\"){code,name,dateEnded}}'
     test_post '{event(code:\"1\"){place{googlePlaceId,address,geocode{latitude,longitude},photoUrl}}}'
     test_post '{event(code:\"1\"){eventUsers{userName,duration,hasLeft}}}'
