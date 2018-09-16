@@ -4,13 +4,18 @@ const {GraphQLObjectType, GraphQLNonNull, GraphQLString, GraphQLList} = require(
 
 const type = new GraphQLObjectType({
   name: "Notification",
-  fields: () => ({
-    createdAt: { type: new GraphQLNonNull(GraphQLString) },
-    message: { type: new GraphQLNonNull(GraphQLString) },
-    reactions: require("./Reaction").fieldForNotification
-  })
+  fields: function() {
+    return {
+      createdAt: { type: new GraphQLNonNull(GraphQLString) },
+      message: { type: new GraphQLNonNull(GraphQLString) },
+      reactions: require("./Reaction").NotificationToReactions
+    };
+  }
 });
 
-module.exports.build = function(_) { };
+module.exports.EventToNotifications = {
+  type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(type))),
+  resolve: function(event) { return event.notifications || []; }
+};
 
-module.exports.fieldForEvent = {type: new GraphQLNonNull(GraphQLList(type))};
+module.exports.build = function(_) { };

@@ -1,5 +1,5 @@
 #!/bin/bash
-DEFAULT_EVENT='{"eventId":{"S":"1"},"placeId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"},"eventName":{"S":"Royale"},"eventUsers":{"L":[]},"notifications":{"L":[]}}'
+DEFAULT_EVENT='{"id":{"S":"1"},"place":{"M":{"googlePlaceId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"}}},"name":{"S":"Royale"}}'
 # Lambda Process Environment Variables
 export DYNAMODB_ENDPOINT=http://localhost:9520
 export TABLE_EVENT=Events
@@ -12,7 +12,7 @@ export VAPID_PRIVATE_KEY=79jcrPY14NJWixhjyoxXnRcEYXamlg7wRrbv_Bu7qMc
 
 function test_post {
   echo "Request: "$1
-  curl localhost:3001/graphql -XPOST -d $1
+  curl localhost:3001/graphql -XPOST -d '{"query":"'$1'"}'
   echo ""
   echo "============================="
 }
@@ -32,14 +32,22 @@ case $1 in
     echo "Node.js is running?"
     ps a | grep --color=auto "node -e"
     echo "============================="
-    test_post '{"query":"{event(eventId:\"1\"){placeId,eventName,dateEnded,photoReference,eventUsers{userName},notifications{message}}}"}'
-    test_post '{"query":"mutation{createEvent(placeId:\"hi\",eventName:\"bye\"){eventId}}"}'
-    test_post '{"query":"mutation{updateEventUser(eventId:\"1\",userName:\"Seob\",duration:250,updatedAt:\"'$(date +%s)'\",travelMode:\"DRIVING\"){userName}}"}'
-    test_post '{"query":"{event(eventId:\"1\"){eventUsers{userName,duration}}}"}'
-    test_post '{"query":"{event(eventId:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}"}'
-    test_post '{"query":"mutation{updateEventUser(eventId:\"1\",userName:\"Seob\",hasLeft:true){hasLeft}}"}'
-    test_post '{"query":"{event(eventId:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}"}'
-    test_post '{"query":"mutation{endEvent(eventId:\"1\"){dateEnded}}"}'
+    test_post 'mutation{createEvent(place:{googlePlaceId:\"hi\"},name:\"bye\"){code,name,dateEnded,place{googlePlaceId,address,geocode{latitude,longitude},photoUrl}}}'
+    test_post '{event(code:\"1\"){code,name,dateEnded}}'
+    test_post '{event(code:\"1\"){place{googlePlaceId,address,geocode{latitude,longitude},photoUrl}}}'
+    test_post '{event(code:\"1\"){eventUsers{userName,duration,hasLeft}}}'
+    test_post 'mutation{updateEventUser(eventCode:\"1\",eventUser:{userName:\"Seob\",duration:250,updatedAt:\"'$(date +%s)'\",travelMode:\"DRIVING\"}){userName}}'
+    test_post '{event(code:\"1\"){eventUsers{userName,duration,hasLeft}}}'
+    test_post '{event(code:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}'
+    test_post 'mutation{updateEventUser(eventCode:\"1\",eventUser:{userName:\"Seob\",hasLeft:true}){userName,hasLeft}}'
+    test_post '{event(code:\"1\"){eventUsers{userName,duration,hasLeft}}}'
+    test_post '{event(code:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}'
+    test_post 'mutation{createReaction(eventCode:\"1\",notificationIndex:0,reaction:{userName:\"Alex\",emoji:\"Hi\"}){userName,emoji}}'
+    test_post '{event(code:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}'
+    test_post 'mutation{deleteReaction(eventCode:\"1\",notificationIndex:0,reaction:{userName:\"Alex\",emoji:\"Hi\"}){userName,emoji}}'
+    test_post '{event(code:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}'
+    test_post 'mutation{endEvent(code:\"1\"){dateEnded}}'
+    test_post '{event(code:\"1\"){code,name,dateEnded}}'
     ;;
 
   "lambda")
@@ -70,7 +78,7 @@ case $1 in
     java -jar DynamoDBLocal.jar -sharedDb -inMemory -port 9520 >/dev/null &
     PID=$!
     trap "kill -TERM $PID" TERM INT
-    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb create-table --table-name $TABLE_EVENT --attribute-definitions AttributeName=eventId,AttributeType=S --key-schema AttributeName=eventId,KeyType=HASH --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 >/dev/null
+    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb create-table --table-name $TABLE_EVENT --attribute-definitions AttributeName=id,AttributeType=S --key-schema AttributeName=id,KeyType=HASH --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 >/dev/null
     aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb put-item --table-name $TABLE_EVENT --item $DEFAULT_EVENT
     node -e 'require("express")().use((req, res, next) => {req.body = ""; req.on("data", (d) => {req.body += d}); req.on("end", next);}).all("*", (req, res, next) => {require("./index").handler({httpMethod: req.method, path: req.path, queryStringParameters: req.query, body: req.body}, null, (err, data) => {console.log({ request: { method: req.method, url: req.url, headers: req.headers, body: req.body }, response: data }); console.log(""); res.status(data.statusCode).set(data.headers).send(data.body);});}).listen(3001, () => {console.log("DEV API server started at http://localhost:3001");});'
     ;;
