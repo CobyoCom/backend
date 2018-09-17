@@ -88,22 +88,47 @@ module.exports.build = function({query, mutation}) {
         const updateExpression = [];
         const expressionAttributeValues = {};
         Object.keys(event).forEach(function(key) {
-          const value = event[key];
-          if (key == "name") key = "eventName";
-          updateExpression.push(key + " = " + ":" + key);
-          expressionAttributeValues[":" + key] = value;
+          if (key == "place" && event.place) {
+            Object.keys(event.place).forEach(function(placeKey) {
+              if (placeKey == "geocode" && event.place.geocode) {
+                Object.keys(event.place.geocode).forEach(function(geocodeKey) {
+                  updateExpression.push("place.geocode." + geocodeKey + " = :" + geocodeKey);
+                  expressionAttributeValues[":" + geocodeKey] = event.place.geocode[geocodeKey];
+                });
+              } else {
+                updateExpression.push("place." + placeKey + " = :" + placeKey);
+                expressionAttributeValues[":" + placeKey] = event.place[placeKey];
+              }
+            });
+          } else {
+            const value = event[key];
+            if (key == "name") key = "eventName";
+            updateExpression.push(key + " = " + ":" + key);
+            expressionAttributeValues[":" + key] = value;
+          }
         });
-        db.update({
-          TableName: Events,
-          Key: {id: code},
-          UpdateExpression: "SET " + updateExpression.join(", "),
-          ExpressionAttributeValues: expressionAttributeValues,
-          ConditionExpression: "attribute_exists(id)",
-          ReturnValues: "ALL_NEW"
-        }, function(err, data) {
-          if (err) return reject(err.message);
-          return resolve(data.Attributes);
-        });
+        if (updateExpression.length == 0) {
+          db.get({
+            TableName: Events,
+            Key: {id: code}
+          }, function(err, data) {
+            if (err) return reject(err.message);
+            if (!data.Item) return reject("eventCode " + code + " not found in DB");
+            return resolve(data.Item);
+          });
+        } else {
+          db.update({
+            TableName: Events,
+            Key: {id: code},
+            UpdateExpression: "SET " + updateExpression.join(", "),
+            ExpressionAttributeValues: expressionAttributeValues,
+            ConditionExpression: "attribute_exists(id)",
+            ReturnValues: "ALL_NEW"
+          }, function(err, data) {
+            if (err) return reject(err.message);
+            return resolve(data.Attributes);
+          });
+        }
       });
     }
   }
