@@ -1,18 +1,33 @@
 #!/bin/bash
-DEFAULT_EVENT='{"id":{"S":"1"},"place":{"M":{"googlePlaceId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"}}},"eventName":{"S":"Royale"}}'
-# Lambda Process Environment Variables
-export DYNAMODB_ENDPOINT=http://localhost:9520
-export TABLE_EVENT=Events
-export ALLOW_ORIGIN=http://localhost:3000
 
-# Dev Environment Variables
+export NPM_INSTALL='graphql fs uuid'
+export NPM_INSTALL_LOCAL_ONLY='express aws-sdk'
+export FRONTEND_PORT=3000
+export BACKEND_PORT=3001
+export DYNAMODB_PORT=9520
+export GRAPHQL_ENDPOINT=http://localhost:$BACKEND_PORT/graphql
+
 export AWS_REGION=us-east-1
-export VAPID_PUBLIC_KEY=BL_mVA1u7cqRZkb5cwF3fcT_371yrdXqBwXlQM5jTQL2yvrG0Tya2hEBxa_2AHntMjfMbEAOu020u1iKn7Rx-Uc
-export VAPID_PRIVATE_KEY=79jcrPY14NJWixhjyoxXnRcEYXamlg7wRrbv_Bu7qMc
+export DYNAMODB_ENDPOINT=http://localhost:$DYNAMODB_PORT
+export TABLE_NAME=Table
+export ALLOW_ORIGIN="http://localhost:3000"
+
+export DEFAULT_EVENTCODE=1
+export DEFAULT_GROUPID=Event-$DEFAULT_EVENTCODE
+export DEFAULT_UUID=a7feab21-5fe1-45f1-b7d3-8a436decb466
+export DEFAULT_USERID=User-$DEFAULT_UUID
+export DEFAULT_EVENT='{"userId":{"S":"'$DEFAULT_GROUPID'"},"groupId":{"S":"'$DEFAULT_GROUPID'"},"code":{"S":"'$DEFAULT_EVENTCODE'"},"place":{"M":{"googlePlaceId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"}}},"eventName":{"S":"Royale"}}'
+export DEFAULT_USER='{"userId":{"S":"'$DEFAULT_USERID'"},"groupId":{"S":"'$DEFAULT_USERID'"},"userName":{"S":"Jay"},"uuid":{"S":"'$DEFAULT_UUID'"}}'
+#export DEFAULT_EVENTUSER='{"userId":{"S":"'$DEFAULT_USERID'"},"groupId":{"S":"'$DEFAULT_GROUPID'"}}'
+#export VAPID_PUBLIC_KEY=BL_mVA1u7cqRZkb5cwF3fcT_371yrdXqBwXlQM5jTQL2yvrG0Tya2hEBxa_2AHntMjfMbEAOu020u1iKn7Rx-Uc
+#export VAPID_PRIVATE_KEY=79jcrPY14NJWixhjyoxXnRcEYXamlg7wRrbv_Bu7qMc
 
 function test_post {
-  echo "Request: "$1
-  curl localhost:3001/graphql -XPOST -d '{"query":"'$1'"}'
+  ADDSPACE1=${1//\{/ \{ }
+  ADDSPACE2=${ADDSPACE1//\}/ \} }
+  ADDSPACE3=${ADDSPACE2//\,/\, }
+  echo "Request:"$ADDSPACE3
+  curl $GRAPHQL_ENDPOINT -XPOST -H "Cookie: SESSION_ID=$DEFAULT_UUID" -d '{"query":"'$1'"}' 2>/dev/null | python -mjson.tool
   echo ""
   echo "============================="
 }
@@ -21,42 +36,38 @@ case $1 in
   "check")
     echo "============================="
     echo "DynamoDB is running?"
-    ps a | grep --color=auto DynamoDB
+    ps a | grep DynamoDB | grep -v grep
     echo "============================="
     echo "List of local DynamoDB tables"
-    aws --endpoint-url http://localhost:9520 dynamodb list-tables
+    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb list-tables
     echo "============================="
     echo "List of items in Events table"
-    aws --endpoint-url http://localhost:9520 dynamodb scan --table-name Events
+    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb scan --table-name $TABLE_NAME
     echo "============================="
     echo "Node.js is running?"
-    ps a | grep --color=auto "node -e"
+    ps a | grep "node dev_server.js" | grep -v grep
     echo "============================="
-    test_post 'mutation{createEvent(event:{place:{googlePlaceId:\"hi\"}}){code,name,dateEnded,scheduledTime,place{googlePlaceId,address,geocode{latitude,longitude},photoUrl}}}'
-    test_post '{event(code:\"1\"){code,name,dateEnded,scheduledTime}}'
-    test_post '{event(code:\"1\"){place{googlePlaceId,address,geocode{latitude,longitude},photoUrl}}}'
-    test_post 'mutation{editEvent(code:\"1\",event:{place:{address:\"hi\"},name:\"royale\",scheduledTime:\"123\"}){code,name,dateEnded,scheduledTime,place{address}}}'
-    test_post '{event(code:\"1\"){code,name,dateEnded}}'
-    test_post '{event(code:\"1\"){place{googlePlaceId,address,geocode{latitude,longitude},photoUrl}}}'
-    test_post '{event(code:\"1\"){eventUsers{userName,duration,hasLeft}}}'
-    test_post 'mutation{updateEventUser(eventCode:\"1\",eventUser:{userName:\"Seob\",duration:250,updatedAt:\"'$(date +%s)'\",travelMode:\"DRIVING\"}){userName}}'
-    test_post '{event(code:\"1\"){eventUsers{userName,duration,hasLeft}}}'
-    test_post '{event(code:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}'
-    test_post 'mutation{updateEventUser(eventCode:\"1\",eventUser:{userName:\"Seob\",hasLeft:true}){userName,hasLeft}}'
-    test_post '{event(code:\"1\"){eventUsers{userName,duration,hasLeft}}}'
-    test_post '{event(code:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}'
-    test_post 'mutation{createReaction(eventCode:\"1\",notificationIndex:0,reaction:{userName:\"Alex\",emoji:\"Hi\"}){userName,emoji}}'
-    test_post '{event(code:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}'
-    test_post 'mutation{deleteReaction(eventCode:\"1\",notificationIndex:0,reaction:{userName:\"Alex\",emoji:\"Hi\"}){userName,emoji}}'
-    test_post '{event(code:\"1\"){notifications{message,createdAt,reactions{userName,emoji}}}}'
-    test_post 'mutation{endEvent(code:\"1\"){dateEnded}}'
-    test_post '{event(code:\"1\"){code,name,dateEnded}}'
+    echo "Check that guests can call { me { name } } and get returned set-cookie"
+    curl -i $GRAPHQL_ENDPOINT -XPOST -d '{"query":"{me{name}}"}' 2>/dev/null | grep -i set-cookie
+    echo "============================="
+    test_post '{me{name}}'
+    test_post '{event(code:\"1\"){code,name,endedTime,scheduledTime,place{googlePlaceId,address,latitude,longitude,photoUrl},me{duration,updatedTime,travelMode,hasLeft,user{name}},numAttendees,eventUsers{duration,updatedTime,travelMode,hasLeft,user{name}},notifications{message,createdTime,reactions{emoji,user{name}}}}}'
+    test_post 'mutation{editMe(user:{name:\"Jay2\"}){name}}'
+    test_post 'mutation{createEvent(event:{place:{googlePlaceId:\"hi\"}}){code,name,endedTime,scheduledTime,place{googlePlaceId,address,latitude,longitude,photoUrl}}}'
+    test_post 'mutation{joinEvent(code:\"1\"){user{name},duration,updatedTime,travelMode,hasLeft}}'
+    test_post 'mutation{editEvent(code:\"1\",event:{place:{address:\"hi\"},name:\"royale2\",scheduledTime:\"123\"}){code,name,endedTime,scheduledTime,place{address}}}'
+    test_post 'mutation{updateEventUser(eventCode:\"1\",eventUser:{duration:250,updatedTime:\"'$(date +%s)'\",travelMode:\"DRIVING\",hasLeft:true}){user{name},duration,updatedTime,travelMode,hasLeft}}'
+    test_post 'mutation{endEvent(code:\"1\"){endedTime}}'
+    test_post '{me{name}}'
+    test_post '{event(code:\"1\"){code,name,endedTime,scheduledTime,place{googlePlaceId,address,latitude,longitude,photoUrl},me{duration,updatedTime,travelMode,hasLeft,user{name}},numAttendees,eventUsers{duration,updatedTime,travelMode,hasLeft,user{name}},notifications{message,createdTime,reactions{emoji,user{name}}}}}'
+    #test_post 'mutation{createReaction(eventCode:\"1\",notificationIndex:0,reaction:{emoji:\"Hi\"}){user{name},emoji}}'
+    #test_post 'mutation{deleteReaction(eventCode:\"1\",notificationIndex:0,reaction:{emoji:\"Hi\"}){user{name},emoji}}'
     ;;
 
   "lambda")
     rm -rf node_modules
     echo "Installing node_modules..."
-    npm install graphql fs web-push &>/dev/null
+    npm install $NPM_INSTALL &>/dev/null
     echo "Zipping source files..."
     zip -r lambda.zip index.js schema node_modules >/dev/null
     echo "Uploading source package to S3..."
@@ -69,7 +80,8 @@ case $1 in
 
   "form")
     aws cloudformation deploy --template-file config.yaml --stack cobyo --capabilities CAPABILITY_IAM
-    aws dynamodb put-item --table-name Events --item $DEFAULT_EVENT
+    aws dynamodb put-item --table-name $TABLE_NAME --item $DEFAULT_EVENT
+    aws dynamodb put-item --table-name $TABLE_NAME --item $DEFAULT_USER
     echo "Manual: Delete 'Stage' on api gateway, delete log-group on cloudwatch"
     ;;
 
@@ -78,17 +90,17 @@ case $1 in
     ;;
 
   "dev")
-    java -jar DynamoDBLocal.jar -sharedDb -inMemory -port 9520 >/dev/null &
+    java -jar DynamoDBLocal.jar -sharedDb -inMemory -port $DYNAMODB_PORT >/dev/null &
     PID=$!
     trap "kill -TERM $PID" TERM INT
-    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb create-table --table-name $TABLE_EVENT --attribute-definitions AttributeName=id,AttributeType=S --key-schema AttributeName=id,KeyType=HASH --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 >/dev/null
-    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb put-item --table-name $TABLE_EVENT --item $DEFAULT_EVENT
-    node -e 'require("express")().use((req, res, next) => {req.body = ""; req.on("data", (d) => {req.body += d}); req.on("end", next);}).all("*", (req, res, next) => {require("./index").handler({httpMethod: req.method, path: req.path, queryStringParameters: req.query, body: req.body}, null, (err, data) => {console.log({ request: { method: req.method, url: req.url, headers: req.headers, body: req.body }, response: data }); console.log(""); res.status(data.statusCode).set(data.headers).send(data.body);});}).listen(3001, () => {console.log("DEV API server started at http://localhost:3001");});'
+    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb create-table --table-name $TABLE_NAME --attribute-definitions AttributeName=userId,AttributeType=S AttributeName=groupId,AttributeType=S --key-schema AttributeName=userId,KeyType=HASH AttributeName=groupId,KeyType=RANGE --global-secondary-index IndexName=Group,KeySchema='[{AttributeName=groupId,KeyType=HASH},{AttributeName=userId,KeyType=RANGE}]',Projection='{ProjectionType=ALL}',ProvisionedThroughput='{ReadCapacityUnits=1,WriteCapacityUnits=1}' --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 >/dev/null
+    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb put-item --table-name $TABLE_NAME --item $DEFAULT_EVENT
+    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb put-item --table-name $TABLE_NAME --item $DEFAULT_USER
+    node dev_server.js
     ;;
 
   "install")
-    npm install express aws-sdk
-    npm install graphql fs web-push
+    npm install $NPM_INSTALL_LOCAL_ONLY $NPM_INSTALL
     rm -f package-lock.json
     ;;
 

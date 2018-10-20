@@ -7,11 +7,13 @@ Resources:
           title: Cobyo-API
           version: 1.0.0
         paths:
-          /{proxy+}:
+          /graphql:
             options:
               responses:
                 '200':
                   headers:
+                    Access-Control-Allow-Credentials:
+                      type: string
                     Access-Control-Allow-Headers:
                       type: string
                     Access-Control-Allow-Methods:
@@ -24,20 +26,16 @@ Resources:
                 responses:
                   default:
                     responseParameters:
+                      method.response.header.Access-Control-Allow-Credentials: '''true'''
                       method.response.header.Access-Control-Allow-Headers: '''content-type'''
-                      method.response.header.Access-Control-Allow-Methods: '''GET,OPTIONS,POST,PUT'''
+                      method.response.header.Access-Control-Allow-Methods: '''OPTIONS,POST'''
                       method.response.header.Access-Control-Allow-Origin: '''https://cobyo.me'''
                     statusCode: 200
                 type: mock
-            x-amazon-apigateway-any-method:
-              parameters:
-              - in: path
-                name: proxy
-                required: true
-                type: string
-              responses: {}
+            post:
               x-amazon-apigateway-integration:
                 httpMethod: POST
+                responses: {}
                 type: aws_proxy
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${Lambda.Arn}/invocations
@@ -52,13 +50,13 @@ Resources:
           ALLOW_ORIGIN: https://cobyo.me
           DYNAMODB_ENDPOINT:
             Fn::Sub: https://dynamodb.${AWS::Region}.amazonaws.com
-          TABLE_EVENT:
-            Ref: TableEvent
+          TABLE_NAME:
+            Ref: Table
       Events:
         ApiProxy:
           Properties:
-            Method: ANY
-            Path: /{proxy+}
+            Method: POST
+            Path: /graphql
             RestApiId:
               Ref: ApiGateway
           Type: Api
@@ -66,7 +64,7 @@ Resources:
       Policies:
       - DynamoDBCrudPolicy:
           TableName:
-            Ref: TableEvent
+            Ref: Table
       Runtime: nodejs6.10
     Type: AWS::Serverless::Function
   LambdaPermission:
@@ -86,14 +84,33 @@ Resources:
         Ref: ApiGateway
       Stage: prod
     Type: AWS::ApiGateway::BasePathMapping
-  TableEvent:
+  Table:
     Properties:
-      PrimaryKey:
-        Name: id
-        Type: String
+      AttributeDefinitions:
+      - AttributeName: userId
+        AttributeType: S
+      - AttributeName: groupId
+        AttributeType: S
+      GlobalSecondaryIndexes:
+      - IndexName: Group
+        KeySchema:
+        - AttributeName: groupId
+          KeyType: HASH
+        - AttributeName: userId
+          KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+      KeySchema:
+      - AttributeName: userId
+        KeyType: HASH
+      - AttributeName: groupId
+        KeyType: RANGE
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
-      TableName: Events
-    Type: AWS::Serverless::SimpleTable
+      TableName: Table
+    Type: AWS::DynamoDB::Table
 Transform: AWS::Serverless-2016-10-31
