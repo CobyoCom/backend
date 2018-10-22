@@ -106,7 +106,7 @@ exports.handler = function(event, context, callback) {
     return graphql(graphqlConfig);
   }).then(function(data) {
     return new Promise(function(resolve) {
-      if (data.errors) throw data.errors.messages[0];
+      if (data.errors) throw data.errors[0].message;
       return resolve(data.data);
     });
   }).then(function(data) {
