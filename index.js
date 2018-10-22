@@ -121,7 +121,7 @@ exports.handler = function(event, context, callback) {
           value: "```" + graphqlConfig.source + "```",
         }, {
           title: "Variables",
-          value: "```" + graphqlConfig.variableNames + "```",
+          value: "```" + graphqlConfig.variableValues + "```",
         }, {
           title: "Response",
           value: "```" + JSON.stringify(data, null, 2) + "```",
@@ -142,7 +142,7 @@ exports.handler = function(event, context, callback) {
           value: "```" + graphqlConfig.source + "```",
         }, {
           title: "Variables",
-          value: "```" + graphqlConfig.variableNames + "```",
+          value: "```" + graphqlConfig.variableValues + "```",
         }, {
           title: "Error",
           value: "```" + err.toString() + "```",
