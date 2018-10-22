@@ -106,7 +106,7 @@ exports.handler = function(event, context, callback) {
     return graphql(graphqlConfig);
   }).then(function(data) {
     return new Promise(function(resolve) {
-      if (data.errors) throw data.errors.message[0];
+      if (data.errors) throw data.errors.messages[0];
       return resolve(data.data);
     });
   }).then(function(data) {
@@ -114,11 +114,14 @@ exports.handler = function(event, context, callback) {
 //console.log(JSON.stringify({
       attachments: [{
         color: (sessionId) ? "good" : "warning",
-        text: ((sessionId) ? "User " : "New User ") + ((Me.userName) ? Me.userName : "(no name)") + " (" + Me.userId + ")",
+        text: ((sessionId) ? "User " : "New User ") + ((Me.userName) ? Me.userName : "(no name)") + " (" + Me.uuid + ")",
         mrkdwn_in: ["fields"],
         fields: [{
-          title: "Request",
-          value: "```" + event.body + "```",
+          title: "Query",
+          value: "```" + graphqlConfig.source + "```",
+        }, {
+          title: "Variables",
+          value: "```" + graphqlConfig.variableNames + "```",
         }, {
           title: "Response",
           value: "```" + JSON.stringify(data, null, 2) + "```",
@@ -132,11 +135,14 @@ exports.handler = function(event, context, callback) {
     if (process.env.SLACK_WEBHOOK_PATH) https.request(slackOptions).end(JSON.stringify({
       attachments: [{
         color: "danger",
-        text: "Error From Production: " + ((sessionId) ? "User " : "New User ") + ((Me.userName) ? Me.userName : "(no name)") + " (" + Me.userId + ")",
+        text: "Error From Production: " + ((sessionId) ? "User " : "New User ") + ((Me.userName) ? Me.userName : "(no name)") + " (" + Me.uuid + ")",
         mrkdwn_in: ["fields"],
         fields: [{
-          title: "Request",
-          value: "```" + event.body + "```",
+          title: "Query",
+          value: "```" + graphqlConfig.source + "```",
+        }, {
+          title: "Variables",
+          value: "```" + graphqlConfig.variableNames + "```",
         }, {
           title: "Error",
           value: "```" + err.toString() + "```",
