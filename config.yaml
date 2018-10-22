@@ -52,6 +52,7 @@ Resources:
             Fn::Sub: https://dynamodb.${AWS::Region}.amazonaws.com
           TABLE_NAME:
             Ref: Table
+          SLACK_WEBHOOK_PATH: /services/TD40HQR7F/BDK27A1SN/F3dsvY0guxCaJAMR1dTjYcOH
       Events:
         ApiProxy:
           Properties:

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export NPM_INSTALL='graphql fs uuid'
+export NPM_INSTALL='graphql fs uuid https'
 export NPM_INSTALL_LOCAL_ONLY='express aws-sdk'
 export FRONTEND_PORT=3000
 export BACKEND_PORT=3001
