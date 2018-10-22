@@ -50,6 +50,7 @@ const slackOptions = {
 exports.handler = function(event, context, callback) {
   const graphqlConfig = {schema};
   var sessionId = null;
+  var newUserUuid = null;
   var Me = null;
 
   (new Promise(function(resolve, reject) {
@@ -95,6 +96,7 @@ exports.handler = function(event, context, callback) {
           if (err && err.code == "ConditionalCheckFailedException") return putUserRec(); //recursive
           if (err) throw err;
           Me = Item;
+          newUserUuid = Item.uuid;
           return resolve();
         });
       }
@@ -110,45 +112,38 @@ exports.handler = function(event, context, callback) {
       return resolve(data.data);
     });
   }).then(function(data) {
-    if (process.env.SLACK_WEBHOOK_PATH) https.request(slackOptions).end(JSON.stringify({
-//console.log(JSON.stringify({
-      attachments: [{
-        color: (sessionId) ? "good" : "warning",
-        text: ((sessionId) ? "User " : "New User ") + ((Me.userName) ? Me.userName : "(no name)") + " (" + Me.uuid + ")",
-        mrkdwn_in: ["fields"],
-        fields: [{
-          title: "Query",
-          value: "```" + graphqlConfig.source + "```",
-        }, {
-          title: "Variables",
-          value: "```" + JSON.stringify(graphqlConfig.variableValues, null, 2) + "```",
-        }, {
-          title: "Response",
-          value: "```" + JSON.stringify(data, null, 2) + "```",
+    if (process.env.SLACK_WEBHOOK_PATH) {
+      const text = [];
+      text.push(((newUserUuid) ? "*New User*: " : "*User*: ") + ((Me.userName) ? Me.userName : "No name") + " | " + Me.uuid);
+      if (graphqlConfig.variableValues) text.push("*Variables*: `" + JSON.stringify(graphqlConfig.variableValues) + "`");
+      text.push("*Query*: ```" + graphqlConfig.source + "```");
+      text.push("*Response*: ```" + JSON.stringify(data, null, 2) + "```");
+      https.request(slackOptions).end(JSON.stringify({
+        attachments: [{
+          color: (newUserUuid) ? "warning" : "good",
+          text: text.join("\n"),
+          mrkdwn_in: ["text"],
         }],
-      }],
-    }));
+      }));
+    }
     return new Promise(function(resolve) {
       return resolve({data});
     });
   }, function(err) {
-    if (process.env.SLACK_WEBHOOK_PATH) https.request(slackOptions).end(JSON.stringify({
-      attachments: [{
-        color: "danger",
-        text: "Error From Production: " + ((sessionId) ? "User " : "New User ") + ((Me.userName) ? Me.userName : "(no name)") + " (" + Me.uuid + ")",
-        mrkdwn_in: ["fields"],
-        fields: [{
-          title: "Query",
-          value: "```" + graphqlConfig.source + "```",
-        }, {
-          title: "Variables",
-          value: "```" + JSON.stringify(graphqlConfig.variableValues, null, 2) + "```",
-        }, {
-          title: "Error",
-          value: "```" + err.toString() + "```",
+    if (process.env.SLACK_WEBHOOK_PATH) {
+      const text = [];
+      text.push("*Error*: " + err.toString());
+      text.push(((newUserUuid) ? "*New User*: " : "*User*: ") + ((Me.userName) ? Me.userName : "No name") + " | " + Me.uuid);
+      if (graphqlConfig.variableValues) text.push("*Variables*: `" + JSON.stringify(graphqlConfig.variableValues) + "`");
+      text.push("*Query*: ```" + graphqlConfig.source + "```");
+      https.request(slackOptions).end(JSON.stringify({
+        attachments: [{
+          color: "danger",
+          text: text.join("\n"),
+          mrkdwn_in: ["text"],
         }],
-      }],
-    }));
+      }));
+    }
     return new Promise(function(resolve) {
       return resolve({errors: [{message: err.toString()}]});
     });
