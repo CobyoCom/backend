@@ -1,24 +1,23 @@
 #!/bin/bash
 
-export NPM_INSTALL='graphql fs uuid https'
+export NPM_INSTALL='graphql fs uuid https web-push'
 export NPM_INSTALL_LOCAL_ONLY='express aws-sdk'
-export DYNAMODB_PORT=9520
+export API_PATH=/graphql
 
-# Env used in dev_server.js and test
-export BACKEND_PORT=3001
+# Prod Server test purpose
 export PROD_API_SERVER=https://api.cobyo.me
-export DEV_API_SERVER=http://localhost
 
-# Lambda Envs used in index.js
+# Dev Environments used in index.js
+export DEV_API_SERVER=http://localhost
+export DEV_API_PORT=3001
 export AWS_REGION=us-east-1
+export ALLOW_ORIGIN=$DEV_API_SERVER:3000
+export DYNAMODB_PORT=9520
 export DYNAMODB_ENDPOINT=$DEV_API_SERVER:$DYNAMODB_PORT
 export TABLE_NAME=Table
-export ALLOW_ORIGIN=$DEV_API_SERVER:3000
 
-# Dynamodb Default Items
-export DEFAULT_EVENTCODE=1
-export DEFAULT_GROUPID=Event-$DEFAULT_EVENTCODE
-export DEFAULT_EVENT='{"userId":{"S":"'$DEFAULT_GROUPID'"},"groupId":{"S":"'$DEFAULT_GROUPID'"},"code":{"S":"'$DEFAULT_EVENTCODE'"},"place":{"M":{"googlePlaceId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"}}},"eventName":{"S":"Royale"}}'
+# Dynamodb Default Event
+export DEFAULT_EVENT='{"userId":{"S":"Event-1"},"groupId":{"S":"Event-1"},"code":{"S":"1"},"place":{"M":{"googlePlaceId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"}}},"eventName":{"S":"Royale"}}'
 
 function test_post {
   ADDSPACE1=${2//\{/ \{ }
@@ -31,11 +30,10 @@ function test_post {
 }
 
 function test_smoke {
-  DOMAIN=$1
-  export GRAPHQL_ENDPOINT=$1$2
+  export GRAPHQL_ENDPOINT=$1$API_PATH
   echo "==========================================================================="
   echo "Check POST with wrong endpoint"
-  curl -i $1 -XOPTIONS 2>/dev/null
+  curl -i $1/random -XPOST 2>/dev/null
   echo "==========================================================================="
   echo "Check OPTIONS with no data"
   curl -i $GRAPHQL_ENDPOINT -XOPTIONS 2>/dev/null
@@ -44,12 +42,9 @@ function test_smoke {
   curl -i $GRAPHQL_ENDPOINT -XPOST 2>/dev/null
   echo ""
   echo "==========================================================================="
-  echo "Check POST with empty data"
-  curl -i $GRAPHQL_ENDPOINT -XPOST -d '{}' 2>/dev/null
+  echo "Check POST with empty data sets SESSION_ID"
+  export SESSION_ID=`curl -i $GRAPHQL_ENDPOINT -XPOST -d '{}' 2>/dev/null | grep -i set-cookie | cut -d'=' -f2 | cut -d';' -f1`
   echo ""
-  echo "==========================================================================="
-  echo "Check that guests can call { me { name } } and get returned set-cookie"
-  export SESSION_ID=`curl -i $GRAPHQL_ENDPOINT -XPOST -d '{"query":"{me{name}}"}' 2>/dev/null | grep -i set-cookie | cut -d'=' -f2 | cut -d';' -f1`
   echo "SESSION_ID=$SESSION_ID"
   echo "==========================================================================="
   test_post '{me{name}}'
@@ -81,16 +76,14 @@ case $1 in
     aws lambda update-function-code --s3-bucket cobyo.backend --s3-key lambda.zip --function-name $LAMBDA_FUNCTION_NAME
     ;;
 
-  "initialize-db")
+  "initdb")
     aws dynamodb put-item --table-name $TABLE_NAME --item $DEFAULT_EVENT
     ;;
 
-  "install")
-    npm install $NPM_INSTALL_LOCAL_ONLY $NPM_INSTALL
-    rm -f package-lock.json
-    ;;
-
   "dev")
+    rm -rf node_modules
+    npm install $NPM_INSTALL_LOCAL_ONLY $NPM_INSTALL &> /dev/null
+    rm -f package-lock.json
     java -jar DynamoDBLocal.jar -sharedDb -inMemory -port $DYNAMODB_PORT >/dev/null &
     PID=$!
     trap "kill -TERM $PID" TERM INT
@@ -100,27 +93,24 @@ case $1 in
     ;;
 
   "test-dev")
-    test_smoke $DEV_API_SERVER :$BACKEND_PORT/graphql
+    test_smoke $DEV_API_SERVER:$DEV_API_PORT
     ;;
 
   "test-prod")
-    test_smoke $PROD_API_SERVER /graphql
+    test_smoke $PROD_API_SERVER
     ;;
 
   *)
     echo "Usage: ./run [command]"
     echo ""
-    echo "< Deployment Tools >"
-    echo "initialize-db   initializes production DB state"
-    echo "lambda          deploys lambda"
+    echo "< Production Tools >"
+    echo "initdb    initializes production DB state"
+    echo "lambda    deploys lambda"
+    echo "test-prod runs smoke-test on production api server"
     echo ""
     echo "< Development Tools >"
-    echo "install         installs local backend package"
-    echo "dev             runs local backend"
-    echo ""
-    echo "< Testing Tools >"
-    echo "test-prod       runs smoke-test on production api server"
-    echo "test-dev        runs smoke-test on development api server"
+    echo "dev       runs local backend"
+    echo "test-dev  runs smoke-test on development api server"
     ;;
 esac
 

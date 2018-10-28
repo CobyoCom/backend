@@ -1,50 +1,50 @@
 "use strict";
-const fs = require("fs");
-const uuidv4 = require("uuid/v4");
-const https = require("https");
+
+// AWS context
 const AWS = require("aws-sdk");
 const db = new AWS.DynamoDB.DocumentClient({
   region: process.env.AWS_REGION,
   endpoint: process.env.DYNAMODB_ENDPOINT,
-  params: {
-    TableName: process.env.TABLE_NAME,
-  },
+  params: { TableName: process.env.TABLE_NAME },
 });
 
-const headers = {
-  "Access-Control-Allow-Credentials": true,
-  "Access-Control-Allow-Origin": process.env.ALLOW_ORIGIN,
+// Slack context
+const https = require("https");
+const isSlackEnabled = !!(process.env.SLACK_WEBHOOK_PATH)
+const slackOptions = {
+  hostname: "hooks.slack.com",
+  path: process.env.SLACK_WEBHOOK_PATH,
+  method: "POST",
+  headers: { "Content-type": "application/json" },
 };
 
+// Web-push context
+const webpush = require("web-push");
+webpush.setVapidDetails(
+  process.env.VAPID_SUBJECT,
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
+
+// GraphQL context
+const fs = require("fs");
+const uuidv4 = require("uuid/v4");
+const {graphql, GraphQLSchema, GraphQLObjectType} = require("graphql");
 const query = {};
 const mutation = {};
 fs.readdirSync(__dirname + "/schema").forEach(function(file) {
   if (file.startsWith(".")) return;
   require("./schema/" + file).build({query, mutation});
 });
-
-const {
-  graphql,
-  GraphQLSchema,
-  GraphQLObjectType
-} = require("graphql");
-
 const schema = new GraphQLSchema({
-  query: new GraphQLObjectType({
-    name: "Query",
-    fields: query,
-  }),
-  mutation: new GraphQLObjectType({
-    name: "Mutation",
-    fields: mutation,
-  }),
+  query:    new GraphQLObjectType({ name: "Query", fields: query }),
+  mutation: new GraphQLObjectType({ name: "Mutation", fields: mutation }),
 });
 
-const slackOptions = {
-  hostname: "hooks.slack.com",
-  path: process.env.SLACK_WEBHOOK_PATH,
-  method: "POST",
-  headers: { "Content-type": "application/json" },
+// Default headers
+const headers = {
+  "Access-Control-Allow-Credentials": true,
+  "Access-Control-Allow-Origin": process.env.ALLOW_ORIGIN,
 };
 
 exports.handler = function(event, context, callback) {
@@ -116,7 +116,7 @@ exports.handler = function(event, context, callback) {
       return resolve({data});
     });
   }, function(err) {
-    if (process.env.SLACK_WEBHOOK_PATH) {
+    if (isSlackEnabled) {
       const text = [];
       text.push("*Error*: " + err.toString());
       text.push(((newUserUuid) ? "*New User*: " : "*User*: ") + ((Me.userName) ? Me.userName : "No name") + " | " + Me.uuid);
