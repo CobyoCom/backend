@@ -112,20 +112,6 @@ exports.handler = function(event, context, callback) {
       return resolve(data.data);
     });
   }).then(function(data) {
-    if (process.env.SLACK_WEBHOOK_PATH) {
-      const text = [];
-      text.push(((newUserUuid) ? "*New User*: " : "*User*: ") + ((Me.userName) ? Me.userName : "No name") + " | " + Me.uuid);
-      if (graphqlConfig.variableValues) text.push("*Variables*: `" + JSON.stringify(graphqlConfig.variableValues) + "`");
-      text.push("*Query*: ```" + graphqlConfig.source + "```");
-      text.push("*Response*: ```" + JSON.stringify(data, null, 2) + "```");
-      https.request(slackOptions).end(JSON.stringify({
-        attachments: [{
-          color: (newUserUuid) ? "warning" : "good",
-          text: text.join("\n"),
-          mrkdwn_in: ["text"],
-        }],
-      }));
-    }
     return new Promise(function(resolve) {
       return resolve({data});
     });

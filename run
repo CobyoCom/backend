@@ -18,20 +18,14 @@ export ALLOW_ORIGIN=$DEV_API_SERVER:3000
 # Dynamodb Default Items
 export DEFAULT_EVENTCODE=1
 export DEFAULT_GROUPID=Event-$DEFAULT_EVENTCODE
-export DEFAULT_UUID=a7feab21-5fe1-45f1-b7d3-8a436decb466
-export DEFAULT_USERID=User-$DEFAULT_UUID
 export DEFAULT_EVENT='{"userId":{"S":"'$DEFAULT_GROUPID'"},"groupId":{"S":"'$DEFAULT_GROUPID'"},"code":{"S":"'$DEFAULT_EVENTCODE'"},"place":{"M":{"googlePlaceId":{"S":"ChIJ7VHBwnZ644kRKRWP5Qe27v4"}}},"eventName":{"S":"Royale"}}'
-export DEFAULT_USER='{"userId":{"S":"'$DEFAULT_USERID'"},"groupId":{"S":"'$DEFAULT_USERID'"},"userName":{"S":"Jay"},"uuid":{"S":"'$DEFAULT_UUID'"}}'
-#export DEFAULT_EVENTUSER='{"userId":{"S":"'$DEFAULT_USERID'"},"groupId":{"S":"'$DEFAULT_GROUPID'"}}'
-#export VAPID_PUBLIC_KEY=BL_mVA1u7cqRZkb5cwF3fcT_371yrdXqBwXlQM5jTQL2yvrG0Tya2hEBxa_2AHntMjfMbEAOu020u1iKn7Rx-Uc
-#export VAPID_PRIVATE_KEY=79jcrPY14NJWixhjyoxXnRcEYXamlg7wRrbv_Bu7qMc
 
 function test_post {
   ADDSPACE1=${2//\{/ \{ }
   ADDSPACE2=${ADDSPACE1//\}/ \} }
   ADDSPACE3=${ADDSPACE2//\,/\, }
   echo "Request:"$ADDSPACE3
-  curl $GRAPHQL_ENDPOINT -XPOST -H "Cookie: SESSION_ID=$DEFAULT_UUID" -d '{"query":"'$1'"}' 2>/dev/null | python -mjson.tool
+  curl $GRAPHQL_ENDPOINT -XPOST -H "Cookie: SESSION_ID=$SESSION_ID" -d '{"query":"'$1'"}' 2>/dev/null | python -mjson.tool
   echo ""
   echo "==========================================================================="
 }
@@ -55,7 +49,8 @@ function test_smoke {
   echo ""
   echo "==========================================================================="
   echo "Check that guests can call { me { name } } and get returned set-cookie"
-  curl -i $GRAPHQL_ENDPOINT -XPOST -d '{"query":"{me{name}}"}' 2>/dev/null | grep -i set-cookie
+  export SESSION_ID=`curl -i $GRAPHQL_ENDPOINT -XPOST -d '{"query":"{me{name}}"}' 2>/dev/null | grep -i set-cookie | cut -d'=' -f2 | cut -d';' -f1`
+  echo "SESSION_ID=$SESSION_ID"
   echo "==========================================================================="
   test_post '{me{name}}'
   test_post '{event(code:\"1\"){code,name,endedTime,scheduledTime,place{googlePlaceId,address,latitude,longitude,photoUrl},me{duration,updatedTime,travelMode,hasLeft,user{name}},numAttendees,eventUsers{duration,updatedTime,travelMode,hasLeft,user{name}},notifications{message,createdTime,reactions{emoji,user{name}}}}}'
@@ -72,13 +67,6 @@ function test_smoke {
 }
 
 case $1 in
-  "cloudformation")
-    aws cloudformation deploy --template-file config.yaml --stack cobyo --capabilities CAPABILITY_IAM
-    aws dynamodb put-item --table-name $TABLE_NAME --item $DEFAULT_EVENT
-    aws dynamodb put-item --table-name $TABLE_NAME --item $DEFAULT_USER
-    echo "Manual: Delete 'Stage' on api gateway, delete log-group on cloudwatch"
-    ;;
-
   "lambda")
     rm -rf node_modules
     echo "Installing node_modules..."
@@ -93,8 +81,8 @@ case $1 in
     aws lambda update-function-code --s3-bucket cobyo.backend --s3-key lambda.zip --function-name $LAMBDA_FUNCTION_NAME
     ;;
 
-  "delete")
-    aws cloudformation delete-stack --stack-name cobyo
+  "initialize-db")
+    aws dynamodb put-item --table-name $TABLE_NAME --item $DEFAULT_EVENT
     ;;
 
   "install")
@@ -108,7 +96,6 @@ case $1 in
     trap "kill -TERM $PID" TERM INT
     aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb create-table --table-name $TABLE_NAME --attribute-definitions AttributeName=userId,AttributeType=S AttributeName=groupId,AttributeType=S --key-schema AttributeName=userId,KeyType=HASH AttributeName=groupId,KeyType=RANGE --global-secondary-index IndexName=Group,KeySchema='[{AttributeName=groupId,KeyType=HASH},{AttributeName=userId,KeyType=RANGE}]',Projection='{ProjectionType=ALL}',ProvisionedThroughput='{ReadCapacityUnits=1,WriteCapacityUnits=1}' --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 >/dev/null
     aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb put-item --table-name $TABLE_NAME --item $DEFAULT_EVENT
-    aws --endpoint-url $DYNAMODB_ENDPOINT dynamodb put-item --table-name $TABLE_NAME --item $DEFAULT_USER
     node dev_server.js
     ;;
 
@@ -124,9 +111,8 @@ case $1 in
     echo "Usage: ./run [command]"
     echo ""
     echo "< Deployment Tools >"
-    echo "cloudformation  deploys cloudformation"
+    echo "initialize-db   initializes production DB state"
     echo "lambda          deploys lambda"
-    echo "delete          deletes cloudformation and lambda"
     echo ""
     echo "< Development Tools >"
     echo "install         installs local backend package"
