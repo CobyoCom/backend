@@ -83,7 +83,8 @@ const updateEventUser = function({db, eventCode, eventUser, Me, resolve, reject}
     },
     UpdateExpression: "SET " + updateExpression.join(", "),
     ExpressionAttributeValues,
-    ConditionExpression: "attribute_exists(userId)",
+    // TODO error out when not joined, commented out for now
+//    ConditionExpression: "attribute_exists(userId)",
     ReturnValues: "ALL_NEW", //TODO UPDATED_OLD, make notifications out of this
   }, function (err, data) {
     if (err) return reject(err.message);
