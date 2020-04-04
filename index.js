@@ -26,9 +26,12 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY
 );
 
+// Session context
+const uuidv4 = require("uuid/v4");
+const cryptr = new (require("cryptr"))(process.env.SESSION_KEY);
+
 // GraphQL context
 const fs = require("fs");
-const uuidv4 = require("uuid/v4");
 const {graphql, GraphQLSchema, GraphQLObjectType} = require("graphql");
 const query = {};
 const mutation = {};
@@ -49,8 +52,7 @@ const headers = {
 
 exports.handler = function(event, context, callback) {
   const graphqlConfig = {schema};
-  var sessionId = null;
-  var newUserUuid = null;
+  var myUuid = null;
   var Me = null;
 
   (new Promise(function(resolve, reject) {
@@ -65,15 +67,15 @@ exports.handler = function(event, context, callback) {
           const keyValue = cookie.split("=");
           if (keyValue.length != 2) return;
           if (keyValue[0].trim() != "SESSION_ID") return;
-          sessionId = keyValue[1].trim();
+          myUuid = cryptr.decrypt(keyValue[1].trim());
         });
       });
       return resolve();
     } catch (err) { reject(err); }
   })).then(function() {
     return new Promise(function(resolve) {
-      if (!sessionId) return resolve();
-      const userId = "User-" + sessionId;
+      if (!myUuid) return resolve();
+      const userId = "User-" + myUuid;
       db.get({
         Key: {
           userId,
@@ -89,21 +91,20 @@ exports.handler = function(event, context, callback) {
     return new Promise(function(resolve) {
       if (Me) return resolve();
       const putUserRec = function() {
-        const uuid = uuidv4();
-        const userId = "User-" + uuid;
-        const Item = { userId, groupId: userId, uuid };
+        myUuid = uuidv4();
+        const userId = "User-" + myUuid;
+        const Item = { userId, groupId: userId, uuid: myUuid };
         db.put({ Item, ConditionExpression: "attribute_not_exists(userId)" }, function(err, data) {
           if (err && err.code == "ConditionalCheckFailedException") return putUserRec(); //recursive
           if (err) throw err;
           Me = Item;
-          newUserUuid = Item.uuid;
           return resolve();
         });
       }
       putUserRec();
     });
   }).then(function() {
-    headers["Set-Cookie"] = "SESSION_ID=" + Me.uuid + "; Max-Age=86400; path=/graphql; HttpOnly; secure";
+    headers["Set-Cookie"] = "SESSION_ID=" + cryptr.encrypt(Me.uuid) + "; Max-Age=86400; path=/graphql; HttpOnly; secure";
     graphqlConfig.contextValue = { db, Me };
     return graphql(graphqlConfig);
   }).then(function(data) {
@@ -119,7 +120,7 @@ exports.handler = function(event, context, callback) {
     if (isSlackEnabled) {
       const text = [];
       text.push("*Error*: " + err.toString());
-      text.push(((newUserUuid) ? "*New User*: " : "*User*: ") + ((Me.userName) ? Me.userName : "No name") + " | " + Me.uuid);
+      text.push("*User*: " + ((Me.userName) ? Me.userName : "No name") + " | " + Me.uuid);
       if (graphqlConfig.variableValues) text.push("*Variables*: `" + JSON.stringify(graphqlConfig.variableValues) + "`");
       text.push("*Query*: ```" + graphqlConfig.source + "```");
       https.request(slackOptions).end(JSON.stringify({
